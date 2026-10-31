@@ -9,6 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="SpeakLoop">
 <meta name="theme-color" content="#F3F4F8" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F121A" media="(prefers-color-scheme: dark)">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;700&family=Literata:opsz,wght@7..72,400;7..72,600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
@@ -363,6 +364,81 @@ a.mini { text-decoration: none; }
 .tips .h { font: 400 var(--fs-xs) var(--font-body); color: var(--ink-2); }
 .tips .t { font-size: var(--fs-sm); }
 
+/* identity + login */
+.who-pill { color: var(--ink); font-weight: 700; }
+.login { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 20px; display: grid; gap: 14px; box-shadow: var(--shadow); }
+.login-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.login h2 { margin: 0; font: 700 var(--fs-xl)/1.3 var(--font-body); text-wrap: balance; }
+.login-current { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); }
+.login-current p { margin: 0; flex: 1; min-width: 0; }
+.name-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.name-btn { display: flex; align-items: baseline; gap: 8px; text-align: left; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); font-weight: 700; font-size: 16px; min-width: 0; }
+.name-btn:hover { border-color: var(--accent); }
+.name-btn[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.name-btn .no { font: 700 13px/1 var(--font-display); color: var(--ink-2); font-variant-numeric: tabular-nums; min-width: 1.6em; }
+.name-btn .nm { min-width: 0; overflow-wrap: anywhere; }
+.login-confirm { display: grid; gap: 10px; padding: 14px; border-radius: 12px; border: 1px solid var(--accent); background: var(--accent-soft); }
+.login-confirm p { margin: 0; font-size: var(--fs-lg); font-weight: 700; }
+.teacher-login { border-top: 1px solid var(--line); padding-top: 12px; }
+.teacher-login summary { cursor: pointer; font-weight: 700; font-size: var(--fs-sm); color: var(--ink-2); }
+.teacher-form { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.teacher-form input { flex: 1 1 200px; min-width: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); }
+body.gated .toolbar, body.gated .panel, body.gated .foot { display: none !important; }
+.tab-badge { display: inline-block; margin-left: 4px; min-width: 1.5em; padding: 1px 6px; border-radius: 999px; background: var(--rec); color: var(--rec-ink); font: 700 11px/1.4 var(--font-display); font-variant-numeric: tabular-nums; vertical-align: 1px; }
+
+/* assignments (student) */
+.asg-list { display: grid; gap: 12px; }
+.acard, .tcard, .empty-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 16px 18px; display: grid; gap: 10px; min-width: 0; }
+.acard[data-done="true"] { border-color: var(--good); }
+.acard-top, .tcard-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.acard h3, .tcard h3 { margin: 0; font: 700 var(--fs-lg)/1.35 var(--font-body); overflow-wrap: anywhere; }
+.acard p, .tcard p, .empty-card p { margin: 0; }
+.state { flex: none; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--warn-soft); color: var(--warn); white-space: nowrap; }
+.state.done { background: var(--good-soft); color: var(--good); }
+.state.closed { background: var(--surface-2); color: var(--ink-2); }
+.aprog { display: flex; align-items: center; gap: 10px; }
+.aprog-bar { flex: 1; height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+.aprog-bar i { display: block; height: 100%; border-radius: 4px; background: var(--good); }
+.aprog-n { font: 700 13px/1 var(--font-display); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.apara { display: flex; gap: 6px; flex-wrap: wrap; }
+.asg-banner { display: grid; gap: 4px; padding: 12px 14px; border-radius: var(--r-md); border: 1px solid var(--accent); background: var(--accent-soft); }
+.asg-banner p { margin: 0; font-size: var(--fs-sm); }
+.ok-text { color: var(--good); font-weight: 700; }
+
+/* teacher */
+.tsec { display: grid; gap: 12px; }
+.tform { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.tform h3 { margin: 0 0 4px; font: 700 var(--fs-md)/1.4 var(--font-body); }
+.tform input[type="text"], .tform input[type="number"], .tform textarea, .tform select { width: 100%; min-width: 0; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); }
+.tform input[type="number"] { width: 6em; }
+.tform textarea { font: 400 15px/1.6 var(--font-read); resize: vertical; }
+.tform details textarea { margin-top: 6px; }
+.tgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px 12px; }
+.tpart { display: grid; gap: 8px; }
+.tfield { border: 0; margin: 0; padding: 0; display: grid; gap: 6px; }
+.checks { display: flex; gap: 6px 14px; flex-wrap: wrap; }
+.checks label { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); }
+.tlist { display: grid; gap: 10px; }
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+.ptable { border-collapse: collapse; width: 100%; font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
+.ptable th, .ptable td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+.ptable th { font-size: var(--fs-xs); color: var(--ink-2); font-weight: 700; background: var(--bg); position: sticky; top: 0; }
+.ptable td.num { text-align: right; }
+.ptable td[data-s="good"] { color: var(--good); font-weight: 700; }
+.ptable td[data-s="warn"] { color: var(--warn); }
+.ptable td[data-s="miss"] { color: var(--miss); }
+.ptable tr:last-child td { border-bottom: 0; }
+.ptable .muted { color: var(--ink-2); }
+.cls-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.cls-head h3 { margin: 0; font: 700 var(--fs-md)/1.4 var(--font-body); }
+.set-row { display: grid; gap: 2px; padding: 10px 0; border-top: 1px solid var(--line); }
+.set-row:first-of-type { border-top: 0; padding-top: 0; }
+.set-row b { font-size: var(--fs-md); }
+.join-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.join-row input { flex: 1 1 260px; min-width: 0; font: 400 13px/1.4 ui-monospace, Menlo, Consolas, monospace; }
+.qr { justify-self: start; padding: 12px; background: #fff; border-radius: 10px; border: 1px solid var(--line); }
+.qr img, .qr canvas { display: block; }
+
 /* records */
 .log-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
@@ -436,6 +512,10 @@ a.mini { text-decoration: none; }
 .foot p { margin: 0; }
 
 @media (max-width: 520px) {
+  .tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .login { padding: 16px; }
+  .login h2 { font-size: 20px; }
+  .name-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tabs .lg { display: none; }
   .tabs .sm { display: inline; }
   .ptext { font-size: 19px; }
@@ -474,6 +554,7 @@ a.mini { text-decoration: none; }
       </div>
     </div>
     <div class="top-meta">
+      <button type="button" class="pill who-pill" id="whoPill" hidden><span id="whoText"></span></button>
       <span class="pill" title="今日、英語で話した(入力した)回数">今日 <b id="todayCount">0</b> 回</span>
       <button type="button" class="pill ai-pill" id="aiPill" data-state="off"><i class="dot"></i><span id="aiPillText">AI 確認中</span></button>
       <button type="button" class="btn ghost" id="settingsBtn" aria-expanded="false" aria-controls="settings">設定</button>
@@ -498,6 +579,14 @@ a.mini { text-decoration: none; }
         <span class="fine" id="voiceNote"></span>
       </div>
     </div>
+    <div class="ai-setup" id="whoSetup" hidden>
+      <h3>利用者</h3>
+      <p class="status-line" id="whoStatus"></p>
+      <div class="field-row">
+        <button type="button" class="btn" id="whoSwitch">利用者を切り替える</button>
+        <button type="button" class="mini" id="whoLogout" hidden>ログアウト</button>
+      </div>
+    </div>
     <div class="ai-setup">
       <h3>AI と記録(Google Apps Script)</h3>
       <p class="status-line" id="aiStatus">確認しています…</p>
@@ -516,6 +605,36 @@ a.mini { text-decoration: none; }
     </div>
   </section>
 
+  <section class="login" id="loginPanel" hidden aria-labelledby="loginTitle">
+    <div class="login-head">
+      <h2 id="loginTitle">クラスと名前を選んでください</h2>
+      <button type="button" class="mini" id="loginClose" hidden>閉じる</button>
+    </div>
+    <p class="fine" id="loginMsg" aria-live="polite"></p>
+    <div class="login-current" id="loginCurrent" hidden>
+      <p id="loginCurrentText"></p>
+      <button type="button" class="mini" id="loginLogout">ログアウト</button>
+    </div>
+    <div class="chips" id="loginClasses" role="group" aria-label="クラス"></div>
+    <div class="name-grid" id="loginNames"></div>
+    <div class="login-confirm" id="loginConfirm" hidden>
+      <p id="loginConfirmText"></p>
+      <div class="actions">
+        <button type="button" class="btn primary" id="loginGo">はじめる</button>
+        <button type="button" class="btn" id="loginBack">選び直す</button>
+      </div>
+    </div>
+    <details class="teacher-login" id="teacherLogin">
+      <summary>先生はこちら</summary>
+      <form class="teacher-form" id="teacherForm" autocomplete="off">
+        <label class="sr-only" for="teacherPw">先生用パスワード</label>
+        <input type="password" id="teacherPw" placeholder="先生用パスワード" autocomplete="current-password">
+        <button type="submit" class="btn" id="teacherGo">先生としてログイン</button>
+      </form>
+      <p class="fine" id="teacherMsg" aria-live="polite"></p>
+    </details>
+  </section>
+
   <div class="notice" id="micNotice" hidden role="status">
     <p id="micNoticeText"></p>
     <button type="button" class="mini" id="micNoticeClose">閉じる</button>
@@ -523,11 +642,13 @@ a.mini { text-decoration: none; }
 
   <div class="toolbar">
     <div class="seg tabs" role="tablist" aria-label="練習モード">
+      <button type="button" role="tab" id="tabbtn-assign" aria-controls="tab-assign" data-tab="assign" aria-selected="false" hidden>課題<span class="tab-badge" id="asgBadge" hidden></span></button>
       <button type="button" role="tab" id="tabbtn-talk" aria-controls="tab-talk" data-tab="talk" aria-selected="true">AI会話</button>
       <button type="button" role="tab" id="tabbtn-shadow" aria-controls="tab-shadow" data-tab="shadow" aria-selected="false"><span class="lg">短文音読</span><span class="sm">短文</span></button>
       <button type="button" role="tab" id="tabbtn-passage" aria-controls="tab-passage" data-tab="passage" aria-selected="false"><span class="lg">長文音読</span><span class="sm">長文</span></button>
       <button type="button" role="tab" id="tabbtn-quick" aria-controls="tab-quick" data-tab="quick" aria-selected="false"><span class="lg">瞬間英作文</span><span class="sm">英作文</span></button>
       <button type="button" role="tab" id="tabbtn-log" aria-controls="tab-log" data-tab="log" aria-selected="false">記録</button>
+      <button type="button" role="tab" id="tabbtn-teacher" aria-controls="tab-teacher" data-tab="teacher" aria-selected="false" hidden>先生</button>
     </div>
   </div>
   <div class="toolbar">
@@ -540,6 +661,16 @@ a.mini { text-decoration: none; }
       </div>
     </div>
   </div>
+
+  <!-- ===== 課題(生徒) ===== -->
+  <section class="panel" id="tab-assign" role="tabpanel" aria-labelledby="tabbtn-assign" hidden>
+    <div class="panel-head">
+      <span class="eyebrow">先生から配信された長文</span>
+      <button type="button" class="btn" id="asgRefresh">更新</button>
+    </div>
+    <p class="fine" id="asgStatus" aria-live="polite"></p>
+    <div class="asg-list" id="asgList"></div>
+  </section>
 
   <!-- ===== AI会話 ===== -->
   <section class="panel" id="tab-talk" role="tabpanel" aria-labelledby="tabbtn-talk">
@@ -565,7 +696,7 @@ a.mini { text-decoration: none; }
     <div class="panel-head">
       <div class="seg small" id="shadowSrc" role="group" aria-label="練習文">
         <button type="button" data-src="set" aria-pressed="true">練習文セット</button>
-        <button type="button" data-src="my" aria-pressed="false">自分の文</button>
+        <button type="button" data-src="my" aria-pressed="false">ライブラリ</button>
         <button type="button" data-src="ai" aria-pressed="false">AIで作る</button>
       </div>
       <span class="counter" id="shadowCounter">1 / 8</span>
@@ -579,7 +710,7 @@ a.mini { text-decoration: none; }
     <div class="my-row" id="shadowMy" hidden>
       <label class="sr-only" for="shadowMySel">セット</label>
       <select id="shadowMySel" class="my-sel"></select>
-      <button type="button" class="mini" id="shadowMyReload">シートから読み込み直す</button>
+      <button type="button" class="mini" id="shadowMyReload">ライブラリを読み込み直す</button>
       <span class="fine my-status" id="shadowMyStatus"></span>
     </div>
     <div class="dots" id="shadowDots" aria-label="各文のスコア"></div>
@@ -618,10 +749,11 @@ a.mini { text-decoration: none; }
         <button type="button" class="mini" id="pasNew">英文を貼り付ける</button>
         <button type="button" class="mini" id="pasEdit" hidden>編集</button>
         <button type="button" class="mini" id="pasDel" hidden>削除</button>
-        <button type="button" class="mini" id="pasReload" hidden>シートから読み込み直す</button>
+        <button type="button" class="mini" id="pasReload" hidden>ライブラリを読み込み直す</button>
       </div>
       <p class="fine pas-note" id="pasSrcNote"></p>
     </div>
+    <div class="asg-banner" id="pasAssign" hidden></div>
     <form class="pas-editor" id="pasEditor" hidden autocomplete="off">
       <label for="pasTitle" class="fine">タイトル(空欄なら書き出しの数語を使います)</label>
       <input type="text" id="pasTitle" placeholder="例: Unit 5 Reading">
@@ -680,7 +812,7 @@ a.mini { text-decoration: none; }
     <div class="my-row">
       <div class="seg small" id="quickSrc" role="group" aria-label="出題">
         <button type="button" data-src="std" aria-pressed="true">標準の問題</button>
-        <button type="button" data-src="my" aria-pressed="false">自分の文</button>
+        <button type="button" data-src="my" aria-pressed="false">ライブラリ</button>
       </div>
       <span class="my-inline" id="quickMy" hidden>
         <label class="sr-only" for="quickMySel">セット</label>
@@ -752,6 +884,115 @@ a.mini { text-decoration: none; }
     </div>
   </section>
 
+  <!-- ===== 先生 ===== -->
+  <section class="panel" id="tab-teacher" role="tabpanel" aria-labelledby="tabbtn-teacher" hidden>
+    <div class="panel-head">
+      <div class="seg small" id="tSeg" role="group" aria-label="先生の画面">
+        <button type="button" data-t="assign" aria-pressed="true">配信</button>
+        <button type="button" data-t="lib" aria-pressed="false">ライブラリ</button>
+        <button type="button" data-t="roster" aria-pressed="false">生徒</button>
+      </div>
+      <div class="actions">
+        <a class="mini" id="tSheet" href="#" target="_blank" rel="noopener" hidden>スプレッドシートを開く</a>
+        <button type="button" class="mini" id="tRefresh">更新</button>
+      </div>
+    </div>
+    <p class="fine" id="tStatus" aria-live="polite"></p>
+
+    <div class="tsec" id="tsec-assign">
+      <div class="actions"><button type="button" class="btn primary" id="taNew">長文を配信する</button></div>
+      <form class="tform" id="taForm" hidden autocomplete="off">
+        <h3>長文を配信する</h3>
+        <label class="fine" for="taLib">ライブラリから選ぶ(ないときは下に貼り付けます)</label>
+        <select id="taLib" class="my-sel"></select>
+        <label class="fine" for="taTitle">タイトル</label>
+        <input type="text" id="taTitle" placeholder="例: Unit 5 Reading">
+        <label class="fine" for="taText">英文(段落のあいだに空行を入れます)</label>
+        <textarea id="taText" rows="8" spellcheck="false" placeholder="ここに英文を貼り付けます"></textarea>
+        <details id="taJaBox">
+          <summary class="fine">日本語訳を付ける(任意)</summary>
+          <textarea id="taJa" rows="5" placeholder="段落ごとに空行で区切ると、段落ごとの訳として表示されます"></textarea>
+        </details>
+        <p class="fine" id="taCount"></p>
+        <fieldset class="tfield">
+          <legend class="fine">配信先のクラス</legend>
+          <div class="checks" id="taClasses"></div>
+        </fieldset>
+        <label class="fine" for="taTarget">目標点(各段落を「段落全体」で読んだときの一致率)</label>
+        <div class="field-row"><input type="number" id="taTarget" min="50" max="100" step="5" value="80"><span>% 以上で、その段落は達成</span></div>
+        <div class="field-row" id="taLibRow">
+          <label class="check"><input type="checkbox" id="taSaveLib"> ライブラリにも登録する</label>
+          <input type="text" id="taSet" list="setNames" placeholder="セット名(例: Unit 5)" hidden>
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn primary" id="taSubmit">配信する</button>
+          <button type="button" class="btn" id="taCancel">キャンセル</button>
+        </div>
+      </form>
+      <div class="tlist" id="taList"></div>
+    </div>
+
+    <div class="tsec" id="tsec-lib" hidden>
+      <form class="tform" id="tlForm" autocomplete="off">
+        <h3>ライブラリに登録する</h3>
+        <div class="tgrid">
+          <div class="field"><label class="fine" for="tlSet">セット</label><input type="text" id="tlSet" list="setNames" placeholder="例: Unit 5"></div>
+          <div class="field"><label class="fine" for="tlMode">種類</label>
+            <select id="tlMode">
+              <option value="長文">長文(長文音読で使う)</option>
+              <option value="音読">短文(短文音読で使う)</option>
+              <option value="和→英">和→英(瞬間英作文で使う)</option>
+              <option value="質問">質問(瞬間英作文で使う)</option>
+            </select>
+          </div>
+        </div>
+        <div class="tpart" id="tlPassage">
+          <label class="fine" for="tlTitle">タイトル</label>
+          <input type="text" id="tlTitle" placeholder="例: Our Town Library">
+          <label class="fine" for="tlText">英文(段落のあいだに空行を入れます)</label>
+          <textarea id="tlText" rows="7" spellcheck="false"></textarea>
+          <details>
+            <summary class="fine">日本語訳を付ける(任意)</summary>
+            <textarea id="tlJa" rows="4" placeholder="段落ごとに空行で区切ります"></textarea>
+          </details>
+        </div>
+        <div class="tpart" id="tlLines" hidden>
+          <label class="fine" for="tlLinesText" id="tlLinesLabel"></label>
+          <textarea id="tlLinesText" rows="7" spellcheck="false"></textarea>
+        </div>
+        <p class="fine" id="tlCount"></p>
+        <div class="actions"><button type="submit" class="btn primary" id="tlSubmit">登録する</button></div>
+      </form>
+      <div class="tlist" id="tlList"></div>
+    </div>
+
+    <div class="tsec" id="tsec-roster" hidden>
+      <div class="tform join-card">
+        <h3>生徒に配る参加リンク</h3>
+        <p class="fine">生徒はこのリンクを開き、クラスと名前を選ぶだけで始められます。リンクを知っている人は誰でも参加できるので、クラスの外には配らないでください。</p>
+        <div class="join-row">
+          <label class="sr-only" for="joinUrl">参加リンク</label>
+          <input type="text" id="joinUrl" readonly>
+          <button type="button" class="btn" id="joinCopy">コピー</button>
+          <button type="button" class="btn" id="joinQrBtn" aria-expanded="false">QRコード</button>
+        </div>
+        <p class="fine" id="joinNote"></p>
+        <div class="qr" id="joinQr" hidden></div>
+      </div>
+      <form class="tform" id="tsForm" autocomplete="off">
+        <h3>生徒を追加する</h3>
+        <label class="fine" for="tsClass">クラス</label>
+        <input type="text" id="tsClass" list="classNames" placeholder="例: 2年A組">
+        <label class="fine" for="tsNames">名前(1行に1人。「12 山田太郎」のように、出席番号を先に書けます)</label>
+        <textarea id="tsNames" rows="6" placeholder="1 青木 健&#10;2 石田 さくら&#10;3 上野 大輔"></textarea>
+        <div class="actions"><button type="submit" class="btn primary" id="tsSubmit">追加する</button></div>
+      </form>
+      <div class="tlist" id="tsList"></div>
+    </div>
+    <datalist id="setNames"></datalist>
+    <datalist id="classNames"></datalist>
+  </section>
+
   <footer class="foot">
     <p>wpm は1分あたりの語数です。ネイティブの日常会話はおよそ 150 wpm が目安です。</p>
     <p>音声認識は Chrome・Edge・Safari で使えます。文字起こしはブラウザの音声認識機能が行います(Chrome では Google のサーバーで処理されます)。AI に送る文章と練習の記録は、あなたの GAS を通ってスプレッドシートに残ります。</p>
@@ -771,6 +1012,31 @@ const store = {
   set(k, v) { try { localStorage.setItem('speakloop:' + k, JSON.stringify(v)); } catch (e) { /* storage unavailable */ } },
   del(k) { try { localStorage.removeItem('speakloop:' + k); } catch (e) { /* ignore */ } },
 };
+/* ---- class use: join link, who is practicing, per-person storage ---- */
+(function acceptJoinLink() {
+  // A teacher's join link carries the GAS address and the class password: ?gas=…&key=…
+  try {
+    const q = new URLSearchParams(location.search);
+    const url = q.get('gas'), key = q.get('key');
+    if (!url || !key) return;
+    if (/^https:\/\/script\.google\.com\/.+\/exec\/?$/.test(url)) {
+      const prev = store.get('gas', {});
+      if (prev.url !== url || prev.token !== key) { store.del('who'); store.del('server'); }
+      store.set('gas', { url, token: key });
+    }
+    history.replaceState(null, '', location.pathname + location.hash);
+  } catch (e) { /* ignore */ }
+})();
+let who = store.get('who', null);
+if (!who || !((who.role === 'student' && who.sid) || (who.role === 'teacher' && who.session))) who = null;
+let server = Object.assign({ classMode: false }, store.get('server', {}));
+const whoKey = () => (!who ? 'p' : who.role === 'student' ? 's:' + who.sid : 't');
+/* Results, drafts and queued logs are kept per person, so a shared school tablet never mixes students. */
+const ukey = (k) => (whoKey() === 'p' ? k : k + '@' + whoKey());
+const asg = { list: store.get(ukey('asgList'), []), best: store.get(ukey('asgBest'), {}), loading: false };
+if (!Array.isArray(asg.list)) asg.list = [];
+if (!asg.best || typeof asg.best !== 'object') asg.best = {};
+
 const ICON = {
   mic: '<svg class="i-mic" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4M8.5 21h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
   stop: '<svg class="i-stop" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2.5" fill="currentColor"/></svg>',
@@ -906,10 +1172,10 @@ if (!LEVELS[settings.level]) settings.level = 'beginner';
 const saveSettings = () => store.set('settings', settings);
 
 const todayKey = () => { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
-let today = store.get('today', { d: '', n: 0 });
+let today = store.get(ukey('today'), { d: '', n: 0 });
 if (today.d !== todayKey()) today = { d: todayKey(), n: 0 };
 const renderToday = () => { $('#todayCount').textContent = today.n; };
-const bumpToday = () => { if (today.d !== todayKey()) today = { d: todayKey(), n: 0 }; today.n++; store.set('today', today); renderToday(); };
+const bumpToday = () => { if (today.d !== todayKey()) today = { d: todayKey(), n: 0 }; today.n++; store.set(ukey('today'), today); renderToday(); };
 renderToday();
 
 /* ================= text-to-speech ================= */
@@ -1203,6 +1469,7 @@ function parseLooseJSON(text) {
   return undefined;
 }
 
+const idParams = () => (who && who.role === 'teacher' ? { session: who.session } : who && who.role === 'student' ? { sid: who.sid } : {});
 async function gasCall(action, payload, signal) {
   if (!conn.url || !conn.token) throw { code: 'no_ai' };
   let res, data;
@@ -1210,7 +1477,7 @@ async function gasCall(action, payload, signal) {
     // A plain-text body keeps this a "simple" request, so the browser skips the CORS preflight that GAS cannot answer.
     res = await fetch(conn.url, {
       method: 'POST',
-      body: JSON.stringify(Object.assign({ action, token: conn.token }, payload || {})),
+      body: JSON.stringify(Object.assign({ action, token: conn.token }, idParams(), payload || {})),
       redirect: 'follow',
       signal,
     });
@@ -1238,7 +1505,10 @@ function errText(e) {
   switch (e && e.code) {
     case 'no_ai': return 'AI は未接続です。設定で GAS の URL と合言葉を入れると使えます。';
     case 'network': return 'GAS に接続できませんでした。ネットワークを確認して、もう一度試してください。';
-    case 'bad_response': return 'GAS から正しい返事が来ませんでした。URL が「/exec」で終わっているか、デプロイの「アクセスできるユーザー」が「全員」になっているか確認してください。';
+    case 'bad_response': return AI.mode === 'gas'
+      ? 'GAS が混み合っているか、一時的に応答しませんでした。少し待ってから、もう一度試してください。'
+      : 'GAS から正しい返事が来ませんでした。URL が「/exec」で終わっているか、デプロイの「アクセスできるユーザー」が「全員」になっているか確認してください。';
+    case 'server_error': return 'GAS でエラーが起きました。少し待ってから、もう一度試してください。続くときは先生に知らせてください。';
     case 'bad_token': return '合言葉が違います。GAS の setup を実行したときに表示された APP_TOKEN を入れてください。';
     case 'no_token_set': return 'GAS に合言葉がまだありません。GAS のエディタで関数「setup」を一度実行してください。';
     case 'no_key': return 'GAS に Anthropic の API キーが設定されていません。スクリプト プロパティに ANTHROPIC_API_KEY を追加してください。';
@@ -1247,12 +1517,23 @@ function errText(e) {
     case 'daily_limit': return '今日の AI 利用回数の上限に達しました。上限は GAS のスクリプト プロパティ DAILY_LIMIT で変えられます。';
     case 'too_long': return '送る文章が長すぎます。会話を「最初からやり直す」で短くしてください。';
     case 'invalid_json': case 'empty_completion': return 'AI の返事をうまく読み取れませんでした。もう一度試してください。';
+    case 'login_required': return 'クラスと名前を選んでから練習してください。';
+    case 'unknown_student': return 'あなたの名前が名簿に見つかりません。先生に確認して、名前を選び直してください。';
+    case 'session_expired': return '先生のログインの有効期限が切れました。もう一度ログインしてください。';
+    case 'student_limit': return '今日の AI の利用回数の上限に達しました。明日また使えます。音読の採点は、このまま使えます。';
+    case 'teacher_only': return 'この操作は先生だけができます。';
+    case 'bad_password': return '先生用パスワードが違います。';
+    case 'too_many_attempts': return 'パスワードを続けて間違えたため、10分ほどログインできません。';
+    case 'no_teacher_password': return 'GAS に先生用パスワードがまだありません。GAS のエディタで関数「setup」を実行してください。';
+    case 'not_found': return '見つかりませんでした。「更新」を押してください。';
     default: return 'AI からの返事を受け取れませんでした。もう一度試してください。';
   }
 }
 function handleAIError(e) {
   const c = e && e.code;
-  if (c === 'bad_token' || c === 'no_token_set' || c === 'bad_response') {
+  if (c === 'login_required' || c === 'unknown_student' || c === 'session_expired') { identityInvalid(c); return; }
+  // A garbled reply from a working connection is usually a busy moment (a whole class at once), not a broken setup.
+  if (c === 'bad_token' || c === 'no_token_set') {
     AI.mode = 'none'; AI.note = c; updateAIUI();
   } else if (c === 'no_key' || c === 'auth') {
     AI.note = c; updateAIUI();
@@ -1264,8 +1545,8 @@ function updateAIUI() {
   $('#gasClear').hidden = !conn.url;
   $('#gasUrl').value = $('#gasUrl').value || conn.url;
   $('#gasToken').placeholder = conn.token ? '保存済み(変えるときだけ入力)' : '合言葉';
-  [$('#sheetLinkSettings'), $('#sheetLink')].forEach((a) => {
-    a.hidden = !(aiUsable() && AI.sheetUrl);
+  [$('#sheetLinkSettings'), $('#sheetLink'), $('#tSheet')].forEach((a) => {
+    a.hidden = !(aiUsable() && AI.sheetUrl && !(who && who.role === 'student'));
     if (AI.sheetUrl) a.href = AI.sheetUrl;
   });
   status.className = 'status-line';
@@ -1284,12 +1565,13 @@ function updateAIUI() {
   updateShadowSrcAvailability();
   renderMyControls();
   renderPasSrc();
+  renderWho();
   if (aiUsable() && !my.loaded && (shadow.src === 'my' || quick.src === 'my' || currentTab === 'passage')) loadMySets();
   if (currentTab === 'log') loadStats();
 }
 
 /* ================= practice log (sent to the spreadsheet through GAS) ================= */
-let pendingLogs = store.get('pendingLogs', []);
+let pendingLogs = store.get(ukey('pendingLogs'), []);
 if (!Array.isArray(pendingLogs)) pendingLogs = [];
 let logFlushing = false;
 const stats = { data: null, dirty: true, loading: false };
@@ -1298,7 +1580,7 @@ function logPractice(entry) {
   const e = Object.assign({ ts: new Date().toISOString(), level: settings.level }, entry);
   pendingLogs.push(e);
   if (pendingLogs.length > 200) pendingLogs = pendingLogs.slice(-200);
-  store.set('pendingLogs', pendingLogs);
+  store.set(ukey('pendingLogs'), pendingLogs);
   stats.dirty = true;
   flushLogs();
 }
@@ -1310,7 +1592,7 @@ async function flushLogs() {
   try {
     await gasCall('log', { entries: batch });
     pendingLogs = pendingLogs.slice(batch.length);
-    store.set('pendingLogs', pendingLogs);
+    store.set(ukey('pendingLogs'), pendingLogs);
     stats.dirty = true;
     ok = true;
   } catch (e) {
@@ -1376,12 +1658,15 @@ $('#gasForm').addEventListener('submit', async (e) => {
   $('#gasSave').disabled = true;
   try {
     const r = await gasCall('ping', {});
+    const changed = prev.url !== url || prev.token !== token;
     store.set('gas', conn);
+    if (changed && who) { store.del('who'); store.del('server'); location.reload(); return; }
     AI.mode = 'gas'; AI.note = r.hasKey ? '' : 'no_key';
     if (r.sheetUrl) { AI.sheetUrl = r.sheetUrl; store.set('sheetUrl', r.sheetUrl); }
     $('#gasToken').value = '';
     stats.dirty = true;
     updateAIUI();
+    refreshServer();
     flushLogs();
   } catch (err) {
     conn.url = prev.url; conn.token = prev.token; AI.mode = prev.mode;
@@ -1393,8 +1678,10 @@ $('#gasForm').addEventListener('submit', async (e) => {
   }
 });
 $('#gasClear').addEventListener('click', () => {
+  if (who) { store.del('gas'); store.del('sheetUrl'); store.del('who'); store.del('server'); location.reload(); return; }
   conn.url = ''; conn.token = '';
-  store.del('gas'); store.del('sheetUrl');
+  store.del('gas'); store.del('sheetUrl'); store.del('server');
+  server = { classMode: false };
   AI.mode = 'none'; AI.note = ''; AI.sheetUrl = '';
   stats.data = null; stats.dirty = true;
   $('#gasUrl').value = '';
@@ -1413,10 +1700,12 @@ $$('#levelSeg button').forEach((b) => b.addEventListener('click', () => {
 }));
 
 /* ================= tabs ================= */
-const TABS = ['talk', 'shadow', 'passage', 'quick', 'log'];
+const TABS = ['assign', 'talk', 'shadow', 'passage', 'quick', 'log', 'teacher'];
+const tabVisible = (t) => !$('#tabbtn-' + t).hidden;
+const defaultTab = () => (who && who.role === 'student' ? 'assign' : who && who.role === 'teacher' ? 'teacher' : 'talk');
 var currentTab = 'talk'; // var: read by updateAIUI, which can run before this line on boot
 function showTab(name, fromHash) {
-  if (!TABS.includes(name)) name = 'talk';
+  if (!TABS.includes(name) || !tabVisible(name)) name = defaultTab();
   if (name !== currentTab) {
     TTS.stop();
     talkBar.abort(); shadowBar.abort(); quickBar.abort(); pasBar.abort();
@@ -1427,9 +1716,11 @@ function showTab(name, fromHash) {
     $('#tab-' + t).hidden = t !== name;
     $('#tabbtn-' + t).setAttribute('aria-selected', String(t === name));
   });
-  store.set('tab', name);
+  store.set(ukey('tab'), name);
   if (name === 'log') loadStats();
   if (name === 'passage' && aiUsable() && !my.loaded) loadMySets();
+  if (name === 'assign') loadAssignments(true);
+  if (name === 'teacher') loadOverview();
   if (!fromHash && location.hash !== '#' + name) { try { history.replaceState(null, '', '#' + name); } catch (e) { /* ignore */ } }
 }
 $$('.tabs button').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
@@ -1694,13 +1985,16 @@ if (!Array.isArray(my.sets)) my.sets = [];
 const mySet = () => my.sets.find((x) => x.name === my.set) || my.sets[0] || null;
 const MY_MODE_JA = { shadow: '音読', ja2en: '和→英', qa: '質問' };
 
+function libHow() {
+  return who && who.role === 'student' ? '先生がライブラリに登録すると、ここに出ます。' : '先生画面の「ライブラリ」か、スプレッドシートの「練習文」シートで登録すると、ここに出ます。';
+}
 function myEmptyText(kind) {
   if (!my.sets.length) {
     return aiUsable()
-      ? 'スプレッドシートの「練習文」シートに文を書くと、ここに出ます。書いたら「読み込み直す」を押してください。'
-      : '自分の文を使うには、設定で GAS を接続してください。文はスプレッドシートの「練習文」シートに書きます。';
+      ? 'ライブラリに文がまだありません。' + libHow()
+      : 'ライブラリを使うには、設定で GAS を接続してください。';
   }
-  return 'このセットには、モードが「' + MY_MODE_JA[kind] + '」の行がありません。「練習文」シートに追加して、「読み込み直す」を押してください。';
+  return 'このセットには「' + MY_MODE_JA[kind] + '」の文がありません。別のセットを選んでください。';
 }
 
 function renderMyControls(statusText) {
@@ -1717,9 +2011,9 @@ function renderMyControls(statusText) {
   fill($('#quickMySel'), (x) => '和→英 ' + x.ja2en.length + ' / 質問 ' + x.qa.length);
   let t = statusText;
   if (!t) {
-    if (!aiUsable() && !my.sets.length) t = '自分の文を使うには、設定で GAS を接続してください。';
-    else if (my.sets.length) t = '「練習文」シートの ' + my.sets.length + ' セットから選べます。シートを書き換えたら「読み込み直す」を押してください。';
-    else t = '「練習文」シートに文がまだありません。';
+    if (!aiUsable() && !my.sets.length) t = 'ライブラリを使うには、設定で GAS を接続してください。';
+    else if (my.sets.length) t = 'ライブラリの ' + my.sets.length + ' セットから選べます。新しく登録された文は「読み込み直す」で出てきます。';
+    else t = 'ライブラリに文がまだありません。' + libHow();
   }
   $('#shadowMyStatus').textContent = t;
   $('#quickMyStatus').textContent = t;
@@ -1731,7 +2025,7 @@ async function loadMySets(force) {
   if (!aiUsable()) { renderMyControls(); return; }
   if (my.loading || (my.loaded && !force)) return;
   my.loading = true;
-  renderMyControls('「練習文」シートを読み込んでいます…');
+  renderMyControls('ライブラリを読み込んでいます…');
   renderPasSrc();
   try {
     const r = await gasCall('sentences', {});
@@ -1750,7 +2044,7 @@ async function loadMySets(force) {
     my.loading = false;
     handleAIError(e);
     renderMyControls('読み込めませんでした。' + errText(e));
-    renderPasSrc('シートを読み込めませんでした。' + errText(e));
+    renderPasSrc('ライブラリを読み込めませんでした。' + errText(e));
   }
 }
 
@@ -2006,10 +2300,10 @@ const pas = {
   list: [], id: store.get('pasId', ''), para: Number(store.get('pasPara', 0)) || 0, sent: 0,
   unit: store.get('pasUnit', 'sentence') === 'para' ? 'para' : 'sentence',
   showJa: false, hideEn: false, playing: false, editIdx: -1, aiCtl: null, delArmed: 0,
-  results: store.get('pasResults', {}),
+  results: store.get(ukey('pasResults'), {}),
 };
 if (!pas.results || typeof pas.results !== 'object') pas.results = {};
-let pastes = store.get('pastes', []);
+let pastes = store.get(ukey('pastes'), []);
 if (!Array.isArray(pastes)) pastes = [];
 
 function makePassage(source, title, paraList, extra) {
@@ -2022,7 +2316,12 @@ function makePassage(source, title, paraList, extra) {
   return Object.assign({ id: source + ':' + h, h, source, title: String(title || '').trim() || first, paras }, extra || {});
 }
 function rebuildPassages() {
-  const list = [makePassage('sample', SAMPLE_PASSAGE.title, splitParas(SAMPLE_PASSAGE.text).map((en) => ({ en })))];
+  const list = asg.list.filter((a) => a && Array.isArray(a.paras) && a.paras.length).map((a) => {
+    const x = makePassage('assign', a.title, a.paras, { assignId: a.id, target: Number(a.target) || 80 });
+    x.id = 'assign:' + a.id;
+    return x;
+  });
+  list.push(makePassage('sample', SAMPLE_PASSAGE.title, splitParas(SAMPLE_PASSAGE.text).map((en) => ({ en }))));
   pastes.forEach((x, i) => list.push(makePassage('paste', x.title, splitParas(x.text).map((en) => ({ en })), { pasteIdx: i })));
   (my.sets || []).forEach((st) => (st.passages || []).forEach((pp) => {
     if (pp && Array.isArray(pp.paras)) list.push(makePassage('sheet', pp.title, pp.paras, { setName: st.name }));
@@ -2039,7 +2338,7 @@ function rebuildPassages() {
 }
 const currentPassage = () => pas.list.find((x) => x.id === pas.id) || pas.list[0];
 function resultsFor(h) { return pas.results[h] || (pas.results[h] = {}); }
-function saveResults() { store.set('pasResults', pas.results); }
+function saveResults() { store.set(ukey('pasResults'), pas.results); }
 
 const pasBar = AnswerBar($('#pasAnswer'), {
   id: 'pas',
@@ -2059,18 +2358,19 @@ function renderPasSrc(msg) {
   btn.disabled = my.loading;
   const nSheet = pas.list.filter((x) => x.source === 'sheet').length;
   $('#pasSrcNote').textContent = msg || (!aiUsable()
-    ? '英文を貼り付けて練習できます。GAS を接続すると、「練習文」シートに書いた長文も選べます。'
-    : my.loading ? '「練習文」シートを読み込んでいます…'
-      : nSheet ? '「練習文」シートの長文 ' + nSheet + ' 件も選べます。シートを書き換えたら「シートから読み込み直す」を押してください。'
-        : '「練習文」シートにモード「長文」の行を書くと、ここで選べるようになります。');
+    ? '英文を貼り付けて練習できます。GAS を接続すると、ライブラリの長文も選べます。'
+    : my.loading ? 'ライブラリを読み込んでいます…'
+      : nSheet ? 'ライブラリの長文 ' + nSheet + ' 件も選べます。新しく登録された長文は「ライブラリを読み込み直す」で出てきます。'
+        : 'ライブラリに長文はまだありません。' + libHow());
 }
 function renderPasSelect() {
   const opt = (x) => '<option value="' + esc(x.id) + '">' + esc(x.title) + '(' + x.paras.length + '段落)</option>';
   const group = (label, items) => (items.length ? '<optgroup label="' + esc(label) + '">' + items.map(opt).join('') + '</optgroup>' : '');
-  let html = group('サンプル', pas.list.filter((x) => x.source === 'sample'));
+  let html = group('課題', pas.list.filter((x) => x.source === 'assign'));
+  html += group('サンプル', pas.list.filter((x) => x.source === 'sample'));
   html += group('貼り付けた英文', pas.list.filter((x) => x.source === 'paste'));
   const setNames = [...new Set(pas.list.filter((x) => x.source === 'sheet').map((x) => x.setName))];
-  setNames.forEach((n) => { html += group('シート: ' + n, pas.list.filter((x) => x.source === 'sheet' && x.setName === n)); });
+  setNames.forEach((n) => { html += group('ライブラリ: ' + n, pas.list.filter((x) => x.source === 'sheet' && x.setName === n)); });
   const sel = $('#pasSel');
   sel.innerHTML = html;
   sel.value = currentPassage().id;
@@ -2092,6 +2392,7 @@ function renderPasAll() {
   store.set('pasId', pas.id); store.set('pasPara', pas.para); store.set('pasUnit', pas.unit);
   renderPasSelect();
   renderPasSrc();
+  renderPasAssign();
   const isPara = pas.unit === 'para';
   $('#pasEyebrow').textContent = '第' + (pas.para + 1) + '段落 / 全' + P.paras.length + '段落';
   $$('#pasUnit button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.unit === pas.unit)));
@@ -2133,12 +2434,16 @@ function renderPasFlags() {
 function refreshPasMarks() {
   const P = currentPassage(), R = resultsFor(P.h), para = P.paras[pas.para], r = R[pas.para] || {};
   const sb = r.s || {};
+  const ab = P.source === 'assign' ? (asg.best[P.assignId] || {}) : null;
   $('#paraList').innerHTML = P.paras.map((pp, i) => {
     const ri = R[i] || {}, si = ri.s || {};
     const done = pp.sents.filter((_, k) => si[k] >= 85).length;
+    const pb = ab ? (ab[i] != null ? Math.max(ab[i], ri.p == null ? 0 : ri.p) : ri.p) : ri.p;
+    const chip = pb == null ? '' : ab
+      ? '<span class="pchip" data-s="' + (pb >= P.target ? 'good' : 'warn') + '">' + (pb >= P.target ? '達成 ' : '段落 ') + pb + '%</span>'
+      : '<span class="pchip" data-s="' + band(pb) + '">段落 ' + pb + '%</span>';
     return '<li><button type="button" class="para-item" data-i="' + i + '"' + (i === pas.para ? ' aria-current="true"' : '') + '>' +
-      '<span class="pnum">' + (i + 1) + '</span><span class="pprev">' + esc(pp.en) + '</span><span class="pchips">' +
-      (ri.p != null ? '<span class="pchip" data-s="' + band(ri.p) + '">段落 ' + ri.p + '%</span>' : '') +
+      '<span class="pnum">' + (i + 1) + '</span><span class="pprev">' + esc(pp.en) + '</span><span class="pchips">' + chip +
       '<span class="pchip"' + (done === pp.sents.length ? ' data-s="good"' : '') + '>文 ' + done + '/' + pp.sents.length + '</span></span></button></li>';
   }).join('');
   $$('#pasBody .snt').forEach((el, i) => {
@@ -2226,7 +2531,8 @@ function gradePassage(text, meta) {
     const prev = r.s[si];
     if (prev == null || sc.score > prev) r.s[si] = sc.score;
     if (prev != null) metaBits.unshift('この文の最高 ' + Math.max(prev, sc.score) + '%');
-    logPractice({ mode: 'passage-sentence', item: target, text, score: sc.score, max: 100, input: voice ? 'voice' : 'keyboard', wpm });
+    logPractice(Object.assign({ mode: 'passage-sentence', item: target, text, score: sc.score, max: 100, input: voice ? 'voice' : 'keyboard', wpm },
+      P.source === 'assign' ? { assign: P.assignId, para: pi } : {}));
     const verdict = sc.score >= 95 ? 'ほぼ完璧です' : sc.score >= 85 ? 'とても良いです' : sc.score >= 60 ? 'あと少し。赤い語を意識してもう一度' : 'お手本を聞いてから、もう一度読みましょう';
     const isEnd = si === para.sents.length - 1 && pi === P.paras.length - 1;
     box.innerHTML = scoreHead(sc.score, verdict, metaBits) + diffHTML(sc) + LEGEND + heardHTML(text, sc.extras) +
@@ -2248,13 +2554,27 @@ function gradePassage(text, meta) {
     per.forEach((v, i) => { if (r.s[i] == null || v > r.s[i]) r.s[i] = v; });
     if (voice && meta.speechMs >= 1000) metaBits.push(fmtTime(meta.speechMs));
     if (prev != null) metaBits.push('この段落の最高 ' + Math.max(prev, sc.score) + '%');
-    logPractice({ mode: 'passage-para', item: P.title + ' 第' + (pi + 1) + '段落', text, score: sc.score, max: 100, input: voice ? 'voice' : 'keyboard', wpm, feedback: '文ごと: ' + per.join(' / ') });
+    logPractice(Object.assign({ mode: 'passage-para', item: P.title + ' 第' + (pi + 1) + '段落', text, score: sc.score, max: 100, input: voice ? 'voice' : 'keyboard', wpm, feedback: '文ごと: ' + per.join(' / ') },
+      P.source === 'assign' ? { assign: P.assignId, para: pi } : {}));
+    let goal = '';
+    if (P.source === 'assign') {
+      const b = asg.best[P.assignId] || (asg.best[P.assignId] = {});
+      const wasDone = P.paras.every((_, i) => b[i] >= P.target);
+      if (!(b[pi] >= sc.score)) b[pi] = sc.score;
+      store.set(ukey('asgBest'), asg.best);
+      const nowDone = P.paras.every((_, i) => b[i] >= P.target);
+      if (nowDone && !wasDone) goal = '<p class="note ok-text">課題の目標をすべて達成しました。おつかれさまでした!</p>';
+      else if (sc.score >= P.target) goal = '<p class="note ok-text">この段落は目標の ' + P.target + '% を達成しました。</p>';
+      else goal = '<p class="note">この段落の目標は ' + P.target + '% です。あと ' + (P.target - sc.score) + ' ポイントです。</p>';
+      renderPasAssign();
+      renderAssignments();
+    }
     const verdict = sc.score >= 95 ? 'ほぼ完璧です。次の段落に進みましょう' : sc.score >= 85 ? 'とても良いです' : sc.score >= 60 ? '点数の低い文を「練習」で1文ずつ直しましょう' : 'まず「1文ずつ」で練習してから、もう一度通して読みましょう';
     const rows = para.sents.map((s, i) => '<div class="sb-row"><span class="sb-n">' + (i + 1) + '</span><span class="sb-text">' + esc(s) + '</span>' +
       '<span class="sb-meter"><i style="width:' + per[i] + '%" data-s="' + band(per[i]) + '"></i></span>' +
       '<span class="sb-val" data-s="' + band(per[i]) + '">' + per[i] + '%</span>' +
       '<button type="button" class="mini" data-drill="' + i + '">練習</button></div>').join('');
-    box.innerHTML = scoreHead(sc.score, verdict, metaBits) + diffHTML(sc) + LEGEND +
+    box.innerHTML = scoreHead(sc.score, verdict, metaBits) + goal + diffHTML(sc) + LEGEND +
       '<div class="sbreak"><h4>文ごとの結果</h4>' + rows + '</div>' + heardHTML(text, sc.extras) +
       '<div class="actions"><button type="button" class="mini" data-act="again">もう一度通して読む</button>' + aiBtn +
       (pi < P.paras.length - 1 ? '<button type="button" class="btn primary" data-act="next">次の段落へ</button>' : '') + '</div>' +
@@ -2378,7 +2698,7 @@ $('#pasEditor').addEventListener('submit', (e) => {
   let idx = pas.editIdx;
   if (idx >= 0 && pastes[idx]) pastes[idx] = entry;
   else { pastes.push(entry); idx = pastes.length - 1; if (pastes.length > 30) { pastes.shift(); idx--; } }
-  store.set('pastes', pastes);
+  store.set(ukey('pastes'), pastes);
   closePasEditor();
   rebuildPassages();
   const mine = pas.list.find((x) => x.source === 'paste' && x.pasteIdx === idx);
@@ -2398,7 +2718,7 @@ $('#pasDel').addEventListener('click', () => {
   clearTimeout(pas.delArmed);
   pas.delArmed = 0;
   pastes.splice(P.pasteIdx, 1);
-  store.set('pastes', pastes);
+  store.set(ukey('pastes'), pastes);
   closePasEditor();
   pas.id = '';
   rebuildPassages();
@@ -2821,6 +3141,544 @@ window.addEventListener('resize', () => {
   resizeT = setTimeout(() => { if (currentTab === 'log' && stats.data) drawDayChart(stats.data.days || []); }, 150);
 });
 
+/* ================= who is practicing: login, roles ================= */
+function setGate(on) {
+  document.body.classList.toggle('gated', !!on);
+}
+function setWho(w) {
+  if (w) store.set('who', w); else store.del('who');
+  location.reload(); // reload so per-person results and queues are read for the new person
+}
+function identityInvalid(code) {
+  who = null;
+  store.del('who');
+  renderWho();
+  openLogin(errText({ code }), { closable: !server.classMode });
+}
+function renderWho() {
+  const pill = $('#whoPill');
+  pill.hidden = !who;
+  if (who) $('#whoText').textContent = who.role === 'teacher' ? '先生' : who.name + (who.cls ? ' · ' + who.cls : '');
+  $('#tabbtn-assign').hidden = !(who && who.role === 'student');
+  $('#tabbtn-teacher').hidden = !(who && who.role === 'teacher');
+  $('#whoSetup').hidden = !aiUsable();
+  $('#gasForm').hidden = !!(who && who.role === 'student');
+  $('#whoStatus').textContent = !who
+    ? (server.classMode ? 'まだログインしていません。' : 'ログインせずに使っています。名簿に生徒がいないあいだは、ログインなしで使えます。')
+    : who.role === 'teacher' ? '先生としてログインしています。' : who.name + '(' + who.cls + ')として練習しています。';
+  $('#whoSwitch').textContent = who ? '利用者を切り替える' : (server.classMode ? 'ログインする' : '先生としてログイン');
+  $('#whoLogout').hidden = !who;
+}
+$('#whoPill').addEventListener('click', () => openLogin('', { closable: true }));
+$('#whoSwitch').addEventListener('click', () => { toggleSettings(false); openLogin('', { closable: true, teacher: !who && !server.classMode }); });
+$('#whoLogout').addEventListener('click', () => setWho(null));
+$('#loginLogout').addEventListener('click', () => setWho(null));
+$('#loginClose').addEventListener('click', () => { $('#loginPanel').hidden = true; setGate(false); });
+
+const login = { classes: [], cls: store.get('lastClass', ''), pick: null };
+async function openLogin(msg, opts) {
+  opts = opts || {};
+  const panel = $('#loginPanel');
+  panel.hidden = false;
+  $('#loginClose').hidden = !opts.closable;
+  setGate(!opts.closable);
+  $('#loginMsg').textContent = msg || '';
+  $('#loginCurrent').hidden = !who;
+  if (who) $('#loginCurrentText').textContent = 'いまは「' + (who.role === 'teacher' ? '先生' : who.name + '(' + who.cls + ')') + '」でログインしています。';
+  if (opts.teacher) $('#teacherLogin').open = true;
+  login.pick = null;
+  $('#loginConfirm').hidden = true;
+  panel.scrollIntoView({ block: 'start' });
+  if (!aiUsable()) { $('#loginMsg').textContent = '先に設定で GAS に接続してください。'; return; }
+  $('#loginNames').innerHTML = '<p class="fine">名簿を読み込んでいます…</p>';
+  try {
+    const r = await gasCall('roster', {});
+    login.classes = Array.isArray(r.classes) ? r.classes : [];
+  } catch (e) {
+    login.classes = [];
+    $('#loginMsg').textContent = '名簿を読み込めませんでした。' + errText(e);
+  }
+  renderLogin();
+}
+function renderLogin() {
+  const cs = login.classes;
+  if (!cs.length) {
+    $('#loginTitle').textContent = server.classMode ? 'クラスと名前を選んでください' : 'ログイン';
+    $('#loginClasses').innerHTML = '';
+    $('#loginNames').innerHTML = '<p class="fine">名簿にまだ生徒がいません。先生は下の「先生はこちら」からログインして、「先生」タブの「生徒」で名簿を作ってください。</p>';
+    $('#teacherLogin').open = true;
+    return;
+  }
+  $('#loginTitle').textContent = 'クラスと名前を選んでください';
+  if (!cs.some((c) => c.name === login.cls)) login.cls = cs[0].name;
+  $('#loginClasses').innerHTML = cs.map((c) => '<button type="button" class="chip" data-cls="' + esc(c.name) + '" aria-pressed="' + (c.name === login.cls) + '">' + esc(c.name) + '</button>').join('');
+  const cur = cs.find((c) => c.name === login.cls);
+  $('#loginNames').innerHTML = cur.students.map((st) => '<button type="button" class="name-btn" data-sid="' + esc(st.id) + '" aria-pressed="' + (login.pick && login.pick.id === st.id) + '">' +
+    '<span class="no">' + (st.no != null ? st.no : '') + '</span><span class="nm">' + esc(st.name) + '</span></button>').join('');
+}
+$('#loginClasses').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-cls]');
+  if (!b) return;
+  login.cls = b.dataset.cls; login.pick = null;
+  $('#loginConfirm').hidden = true;
+  renderLogin();
+});
+$('#loginNames').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-sid]');
+  if (!b) return;
+  const c = login.classes.find((x) => x.name === login.cls);
+  login.pick = c && c.students.find((x) => x.id === b.dataset.sid);
+  if (!login.pick) return;
+  $('#loginConfirmText').textContent = login.pick.name + '(' + login.cls + ')で練習を始めます。';
+  $('#loginConfirm').hidden = false;
+  renderLogin();
+  $('#loginGo').focus();
+});
+$('#loginBack').addEventListener('click', () => { login.pick = null; $('#loginConfirm').hidden = true; renderLogin(); });
+$('#loginGo').addEventListener('click', () => {
+  if (!login.pick) return;
+  store.set('lastClass', login.cls);
+  setWho({ role: 'student', sid: login.pick.id, name: login.pick.name, cls: login.cls });
+});
+$('#teacherForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const pw = $('#teacherPw').value;
+  if (!pw) return;
+  $('#teacherGo').disabled = true;
+  $('#teacherMsg').textContent = '確認しています…';
+  try {
+    const r = await gasCall('teacherLogin', { password: pw });
+    if (r.sheetUrl) store.set('sheetUrl', r.sheetUrl);
+    setWho({ role: 'teacher', session: r.session });
+  } catch (err) {
+    $('#teacherMsg').textContent = errText(err);
+    $('#teacherGo').disabled = false;
+  }
+});
+
+/** Asks GAS who we are and whether the class roster is in use, then shows the right screens. */
+async function refreshServer() {
+  if (!aiUsable()) { setGate(false); renderWho(); return; }
+  try {
+    const r = await gasCall('ping', {});
+    server = { classMode: !!r.classMode, hasTeacherPassword: !!r.hasTeacherPassword };
+    store.set('server', server);
+    if (r.sheetUrl) { AI.sheetUrl = r.sheetUrl; store.set('sheetUrl', r.sheetUrl); }
+    AI.note = r.hasKey ? '' : 'no_key';
+    if (r.role === 'invalid') { identityInvalid(r.code); return; }
+    if (r.role === 'student' && who && r.student && (who.name !== r.student.name || who.cls !== r.student.cls)) {
+      who.name = r.student.name; who.cls = r.student.cls; store.set('who', who);
+    }
+    if (r.role === 'guest') { renderWho(); openLogin(); return; }
+    if ($('#loginPanel').hidden || !document.body.classList.contains('gated')) setGate(false);
+    else { $('#loginPanel').hidden = true; setGate(false); }
+    updateAIUI();
+    if (who && who.role === 'student') loadAssignments(true);
+    if (who && who.role === 'teacher' && currentTab === 'teacher') loadOverview(true);
+  } catch (e) {
+    handleAIError(e);
+  }
+}
+
+/* ================= assignments (student) ================= */
+const asgDone = (a) => a.paras.filter((_, i) => (asg.best[a.id] || {})[i] >= a.target).length;
+async function loadAssignments(quiet) {
+  if (!who || who.role !== 'student' || asg.loading) { renderAssignments(); return; }
+  asg.loading = true;
+  if (!quiet || !asg.list.length) $('#asgStatus').textContent = '課題を読み込んでいます…';
+  $('#asgRefresh').disabled = true;
+  try {
+    const r = await gasCall('assignments', {});
+    asg.list = Array.isArray(r.assignments) ? r.assignments : [];
+    asg.list.forEach((a) => {
+      const b = asg.best[a.id] || (asg.best[a.id] = {});
+      Object.keys(a.best || {}).forEach((k) => { if (!(b[k] >= a.best[k])) b[k] = a.best[k]; });
+    });
+    store.set(ukey('asgList'), asg.list);
+    store.set(ukey('asgBest'), asg.best);
+    $('#asgStatus').textContent = '';
+  } catch (e) {
+    if (e && e.code === 'cancelled') return;
+    handleAIError(e);
+    $('#asgStatus').textContent = '課題を読み込めませんでした。' + errText(e) + (asg.list.length ? '前に読み込んだ課題を表示しています。' : '');
+  } finally {
+    asg.loading = false;
+    $('#asgRefresh').disabled = false;
+  }
+  renderAssignments();
+  const before = pas.id;
+  rebuildPassages();
+  if (pas.id === before) { renderPasSelect(); renderPasAssign(); refreshPasMarks(); } else renderPasAll();
+}
+function renderAssignments() {
+  const box = $('#asgList');
+  const open = asg.list.filter((a) => asgDone(a) < a.paras.length).length;
+  $('#asgBadge').hidden = !open;
+  $('#asgBadge').textContent = open;
+  if (!asg.list.length) {
+    box.innerHTML = '<div class="empty-card"><p><b>いまは配信された課題がありません。</b></p><p class="fine">先生が長文を配信すると、ここに表示されます。それまでは、ほかのタブで自由に練習できます。</p></div>';
+    return;
+  }
+  box.innerHTML = asg.list.map((a) => {
+    const b = asg.best[a.id] || {}, n = a.paras.length, done = asgDone(a), complete = done === n;
+    const d = a.date ? new Date(a.date) : null;
+    return '<article class="acard" data-done="' + complete + '">' +
+      '<div class="acard-top"><h3>' + esc(a.title) + '</h3><span class="state' + (complete ? ' done' : '') + '">' + (complete ? '完了' : 'あと ' + (n - done) + ' 段落') + '</span></div>' +
+      '<p class="fine">' + (d && !isNaN(d) ? (d.getMonth() + 1) + '/' + d.getDate() + ' 配信 · ' : '') + n + '段落 · 目標: 各段落を「段落全体」で ' + a.target + '% 以上</p>' +
+      '<div class="aprog"><span class="aprog-bar"><i style="width:' + Math.round((done / n) * 100) + '%"></i></span><span class="aprog-n">' + done + ' / ' + n + ' 段落</span></div>' +
+      '<div class="apara">' + a.paras.map((_, i) => {
+        const v = b[i];
+        return '<span class="pchip"' + (v == null ? '' : ' data-s="' + (v >= a.target ? 'good' : 'warn') + '"') + '>第' + (i + 1) + '段落 ' + (v == null ? '—' : v + '%') + '</span>';
+      }).join('') + '</div>' +
+      '<div class="actions"><button type="button" class="btn' + (complete ? '' : ' primary') + '" data-open="' + esc(a.id) + '">' + (complete ? 'もう一度練習する' : '練習する') + '</button></div></article>';
+  }).join('');
+}
+$('#asgList').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-open]');
+  if (b) openAssignment(b.dataset.open);
+});
+$('#asgRefresh').addEventListener('click', () => loadAssignments(false));
+function openAssignment(id) {
+  const a = asg.list.find((x) => x.id === id);
+  const P = pas.list.find((x) => x.assignId === id);
+  if (!a || !P) return;
+  const b = asg.best[id] || {};
+  const next = P.paras.findIndex((_, i) => !(b[i] >= P.target));
+  pas.id = P.id; pas.unit = 'para'; pas.para = next < 0 ? 0 : next; pas.sent = 0;
+  closePasEditor();
+  showTab('passage');
+  renderPasAll();
+  window.scrollTo({ top: 0 });
+}
+function renderPasAssign() {
+  const P = currentPassage(), box = $('#pasAssign');
+  if (!P || P.source !== 'assign') { box.hidden = true; return; }
+  const b = asg.best[P.assignId] || {};
+  const n = P.paras.length, done = P.paras.filter((_, i) => b[i] >= P.target).length;
+  box.hidden = false;
+  box.innerHTML = '<span class="eyebrow">課題</span><p><b>目標: 各段落を「段落全体」で ' + P.target + '% 以上</b> · 達成 ' + done + ' / ' + n + ' 段落' +
+    (done === n ? ' · <span class="ok-text">完了しました</span>' : '') + '</p>';
+}
+
+/* ================= teacher screen ================= */
+const tch = { data: null, loading: false, sub: store.get('tSub', 'assign'), open: {}, arm: {} };
+function armOnce(key, btn, label) {
+  // Two presses for anything that deletes, since the page cannot show a confirm dialog.
+  if (tch.arm[key]) { clearTimeout(tch.arm[key]); delete tch.arm[key]; return true; }
+  const orig = btn.textContent;
+  btn.textContent = label || 'もう一度押すと削除';
+  tch.arm[key] = setTimeout(() => { delete tch.arm[key]; btn.textContent = orig; }, 4000);
+  return false;
+}
+async function loadOverview(force, doneMsg) {
+  if (!who || who.role !== 'teacher') return;
+  if (tch.data && !force) { renderTeacher(); return; }
+  if (tch.loading) return;
+  tch.loading = true;
+  $('#tStatus').textContent = doneMsg || '読み込んでいます…';
+  $('#tRefresh').disabled = true;
+  try {
+    tch.data = await gasCall('tOverview', {});
+    if (tch.data.sheetUrl) { AI.sheetUrl = tch.data.sheetUrl; store.set('sheetUrl', AI.sheetUrl); }
+    $('#tStatus').textContent = doneMsg || '';
+  } catch (e) {
+    handleAIError(e);
+    $('#tStatus').textContent = '読み込めませんでした。' + errText(e);
+  } finally {
+    tch.loading = false;
+    $('#tRefresh').disabled = false;
+  }
+  renderTeacher();
+  updateAIUI();
+}
+$('#tRefresh').addEventListener('click', () => { my.loaded = false; loadOverview(true); });
+$$('#tSeg button').forEach((b) => b.addEventListener('click', () => { tch.sub = b.dataset.t; store.set('tSub', tch.sub); renderTeacher(); }));
+
+function renderTeacher() {
+  $$('#tSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.t === tch.sub)));
+  ['assign', 'lib', 'roster'].forEach((k) => { $('#tsec-' + k).hidden = k !== tch.sub; });
+  const d = tch.data;
+  if (!d) return;
+  $('#setNames').innerHTML = (d.sets || []).map((x) => '<option value="' + esc(x.name) + '"></option>').join('');
+  $('#classNames').innerHTML = (d.classes || []).map((c) => '<option value="' + esc(c.name) + '"></option>').join('');
+  renderTA();
+  renderTL();
+  renderTS();
+}
+function studentsFor(a) {
+  const all = a.classes.includes('全員');
+  const out = [];
+  (tch.data.classes || []).forEach((c) => { if (all || a.classes.includes(c.name)) c.students.forEach((st) => out.push(Object.assign({ cls: c.name }, st))); });
+  return out;
+}
+function fmtDay(iso) { const d = iso ? new Date(iso) : null; return d && !isNaN(d) ? (d.getMonth() + 1) + '/' + d.getDate() : ''; }
+
+/* ---- 配信 ---- */
+function renderTA() {
+  const list = tch.data.assignments || [];
+  $('#taList').innerHTML = list.length ? list.map((a) => {
+    const sts = studentsFor(a), n = a.paras.length, prog = a.progress || {};
+    const doneCount = sts.filter((st) => a.paras.every((_, i) => ((prog[st.id] || {})[i]) >= a.target)).length;
+    const startCount = sts.filter((st) => prog[st.id] && Object.keys(prog[st.id]).length).length;
+    const closed = a.status === '終了';
+    const open = !!tch.open[a.id];
+    let table = '';
+    if (open) {
+      table = '<div class="tbl-wrap"><table class="ptable"><thead><tr><th>クラス</th><th>番号</th><th>名前</th><th>状態</th>' +
+        a.paras.map((_, i) => '<th>第' + (i + 1) + '段落</th>').join('') + '</tr></thead><tbody>' +
+        (sts.length ? sts.map((st) => {
+          const b = prog[st.id] || {};
+          const k = a.paras.filter((_, i) => b[i] >= a.target).length;
+          return '<tr><td>' + esc(st.cls) + '</td><td class="num">' + (st.no != null ? st.no : '') + '</td><td>' + esc(st.name) + '</td>' +
+            '<td' + (k === n ? ' data-s="good"' : '') + '>' + (k === n ? '完了' : k + ' / ' + n) + '</td>' +
+            a.paras.map((_, i) => {
+              const v = b[i];
+              return v == null ? '<td class="num muted">—</td>' : '<td class="num" data-s="' + (v >= a.target ? 'good' : v >= a.target - 20 ? 'warn' : 'miss') + '">' + v + '%</td>';
+            }).join('') + '</tr>';
+        }).join('') : '<tr><td colspan="' + (n + 4) + '" class="muted">配信先のクラスに生徒がいません。</td></tr>') +
+        '</tbody></table></div>';
+    }
+    return '<article class="tcard">' +
+      '<div class="tcard-top"><div><h3>' + esc(a.title) + '</h3><p class="fine">' + fmtDay(a.date) + ' 配信 · ' + esc(a.classes.join(', ')) + ' · ' + n + '段落 · 目標 ' + a.target + '%</p></div>' +
+      '<span class="state' + (closed ? ' closed' : ' done') + '">' + (closed ? '終了' : '公開中') + '</span></div>' +
+      '<div class="aprog"><span class="aprog-bar"><i style="width:' + (sts.length ? Math.round((doneCount / sts.length) * 100) : 0) + '%"></i></span>' +
+      '<span class="aprog-n">完了 ' + doneCount + ' / ' + sts.length + '人 · 取り組み中 ' + Math.max(0, startCount - doneCount) + '人</span></div>' +
+      '<div class="actions"><button type="button" class="mini" data-ta="table" data-id="' + esc(a.id) + '" aria-expanded="' + open + '">' + (open ? '進捗を閉じる' : '生徒ごとの進捗を見る') + '</button>' +
+      '<button type="button" class="mini" data-ta="' + (closed ? 'open' : 'close') + '" data-id="' + esc(a.id) + '">' + (closed ? '再開する' : '終了する(生徒に表示しない)') + '</button>' +
+      '<button type="button" class="mini" data-ta="delete" data-id="' + esc(a.id) + '">削除</button></div>' + table + '</article>';
+  }).join('') : '<div class="empty-card"><p><b>まだ配信していません。</b></p><p class="fine">「長文を配信する」から、クラスに長文を配信できます。生徒の「課題」タブに表示され、段落ごとの最高点がここに集まります。</p></div>';
+}
+$('#taList').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-ta]');
+  if (!b) return;
+  const id = b.dataset.id, op = b.dataset.ta;
+  if (op === 'table') { tch.open[id] = !tch.open[id]; renderTA(); return; }
+  if (op === 'delete' && !armOnce('del:' + id, b, 'もう一度押すと削除(記録は残ります)')) return;
+  b.disabled = true;
+  try {
+    await gasCall('tAssignUpdate', { id, op });
+    await loadOverview(true, op === 'delete' ? '配信を削除しました。' : op === 'close' ? '配信を終了しました。生徒の課題一覧には表示されません。' : '配信を再開しました。');
+  } catch (err) {
+    handleAIError(err);
+    $('#tStatus').textContent = errText(err);
+    b.disabled = false;
+  }
+});
+
+function libPassages() {
+  const out = [];
+  (my.sets || []).forEach((st) => (st.passages || []).forEach((pp) => out.push({ set: st.name, title: pp.title, paras: pp.paras || [] })));
+  return out;
+}
+function openTaForm() {
+  $('#taForm').hidden = false;
+  $('#taNew').hidden = true;
+  const fill = () => {
+    const ps = libPassages();
+    $('#taLib').innerHTML = '<option value="">(ライブラリから選ばない)</option>' + ps.map((x, i) => '<option value="' + i + '">' + esc(x.set + ' / ' + x.title) + '(' + x.paras.length + '段落)</option>').join('');
+  };
+  fill();
+  if (!my.loaded) loadMySets(true).then(fill);
+  const cs = (tch.data && tch.data.classes) || [];
+  $('#taClasses').innerHTML = '<label><input type="checkbox" value="全員" id="taAll"> 全員</label>' +
+    cs.map((c) => '<label><input type="checkbox" value="' + esc(c.name) + '"> ' + esc(c.name) + '(' + c.students.length + '人)</label>').join('');
+  updateTaCount();
+  $('#taTitle').focus();
+}
+function closeTaForm() {
+  $('#taForm').hidden = true;
+  $('#taNew').hidden = false;
+  $('#taForm').reset();
+  $('#taSet').hidden = true;
+  $('#taLibRow').hidden = false;
+}
+function updateTaCount() {
+  const ps = splitParas($('#taText').value);
+  const ns = ps.reduce((n, x) => n + splitSentences(x).length, 0);
+  $('#taCount').textContent = ps.length ? ps.length + '段落・' + ns + '文を配信します。' : '';
+}
+$('#taNew').addEventListener('click', openTaForm);
+$('#taCancel').addEventListener('click', closeTaForm);
+$('#taText').addEventListener('input', updateTaCount);
+$('#taLib').addEventListener('change', (e) => {
+  const x = libPassages()[Number(e.target.value)];
+  $('#taLibRow').hidden = !!x;
+  if (!x) return;
+  $('#taTitle').value = x.title;
+  $('#taText').value = x.paras.map((p) => p.en).join('\n\n');
+  const ja = x.paras.map((p) => p.ja || '');
+  $('#taJa').value = ja.some(Boolean) ? ja.join('\n\n') : '';
+  $('#taJaBox').open = ja.some(Boolean);
+  updateTaCount();
+});
+$('#taSaveLib').addEventListener('change', (e) => { $('#taSet').hidden = !e.target.checked; if (e.target.checked) $('#taSet').focus(); });
+$('#taClasses').addEventListener('change', (e) => {
+  if (e.target.id !== 'taAll') return;
+  $$('#taClasses input').forEach((x) => { if (x.id !== 'taAll') { x.disabled = e.target.checked; if (e.target.checked) x.checked = false; } });
+});
+$('#taForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const text = $('#taText').value.trim();
+  const all = $('#taAll') && $('#taAll').checked;
+  const classes = $$('#taClasses input:checked').map((x) => x.value).filter((v) => v !== '全員');
+  const st = $('#tStatus');
+  if (!splitParas(text).length) { st.textContent = '英文を入れてください。'; return; }
+  if (!all && !classes.length) { st.textContent = '配信先のクラスを選んでください。'; return; }
+  const set = $('#taSaveLib').checked ? $('#taSet').value.trim() : '';
+  if ($('#taSaveLib').checked && !set) { st.textContent = 'ライブラリに登録するセット名を入れてください。'; return; }
+  $('#taSubmit').disabled = true;
+  st.textContent = '配信しています…';
+  try {
+    await gasCall('tAssign', { title: $('#taTitle').value.trim(), text, ja: $('#taJa').value.trim(), classes: all ? [] : classes, target: Number($('#taTarget').value) || 80, librarySet: set });
+    closeTaForm();
+    if (set) my.loaded = false;
+    await loadOverview(true, '配信しました。生徒の「課題」タブに表示されます。');
+  } catch (err) {
+    handleAIError(err);
+    st.textContent = '配信できませんでした。' + errText(err);
+  } finally {
+    $('#taSubmit').disabled = false;
+  }
+});
+
+/* ---- ライブラリ ---- */
+const TL_LINES = {
+  '音読': { label: '1行に1文。「英文 | 日本語訳」の形で書きます(訳は省略できます)。Excel やスプレッドシートから2列をコピーして貼り付けても入ります。', ph: 'I usually walk to school. | ふだんは歩いて通学します。\nSee you tomorrow. | また明日。' },
+  '和→英': { label: '1行に1問。「日本語 | 英文 | ヒント」の形で書きます(ヒントは省略できます)。', ph: '駅までどうやって行けばいいですか? | How can I get to the station? | How can I get to …?' },
+  '質問': { label: '1行に1問。「英語の質問 | 日本語訳 | 回答例」の形で書きます(訳と回答例は省略できます)。', ph: 'What do you usually do on weekends? | 週末はたいてい何をしていますか? | I usually play soccer with my friends.' },
+};
+function tlItems() {
+  const set = $('#tlSet').value.trim(), mode = $('#tlMode').value;
+  if (mode === '長文') {
+    const text = $('#tlText').value.trim();
+    return text ? [{ set, mode, en: text, ja: $('#tlJa').value.trim(), extra: $('#tlTitle').value.trim() || splitParas(text)[0].split(' ').slice(0, 6).join(' ') + '…' }] : [];
+  }
+  return $('#tlLinesText').value.split('\n').map((line) => line.split(/\t|\s*\|\s*/).map((x) => x.trim())).filter((c) => c[0]).map((c) => {
+    if (mode === '和→英') return { set, mode, en: c[1] || '', ja: c[0], extra: c[2] || '' };
+    return { set, mode, en: c[0], ja: c[1] || '', extra: mode === '質問' ? (c[2] || '') : '' };
+  }).filter((x) => x.en && (mode !== '和→英' || x.ja));
+}
+function updateTl() {
+  const mode = $('#tlMode').value;
+  $('#tlPassage').hidden = mode !== '長文';
+  $('#tlLines').hidden = mode === '長文';
+  if (TL_LINES[mode]) { $('#tlLinesLabel').textContent = TL_LINES[mode].label; $('#tlLinesText').placeholder = TL_LINES[mode].ph; }
+  const n = tlItems().length;
+  $('#tlCount').textContent = !n ? '' : mode === '長文' ? splitParas($('#tlText').value).length + '段落の長文を1つ登録します。' : n + '件を登録します。';
+}
+['#tlMode', '#tlText', '#tlLinesText'].forEach((id) => $(id).addEventListener('input', updateTl));
+$('#tlMode').addEventListener('change', updateTl);
+$('#tlForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const st = $('#tStatus');
+  if (!$('#tlSet').value.trim()) { st.textContent = 'セット名を入れてください(例: Unit 5)。'; return; }
+  const items = tlItems();
+  if (!items.length) { st.textContent = '登録する英文を入れてください。'; return; }
+  $('#tlSubmit').disabled = true;
+  st.textContent = '登録しています…';
+  try {
+    const r = await gasCall('tAddLibrary', { items });
+    $('#tlText').value = ''; $('#tlJa').value = ''; $('#tlTitle').value = ''; $('#tlLinesText').value = '';
+    updateTl();
+    my.loaded = false;
+    await loadOverview(true, r.written + '件をライブラリに登録しました。生徒の画面では「ライブラリを読み込み直す」で出てきます。');
+  } catch (err) {
+    handleAIError(err);
+    st.textContent = '登録できませんでした。' + errText(err);
+  } finally {
+    $('#tlSubmit').disabled = false;
+  }
+});
+function renderTL() {
+  const sets = tch.data.sets || [];
+  $('#tlList').innerHTML = '<div class="tform"><h3>登録されているセット</h3>' + (sets.length ? sets.map((x) => {
+    const bits = [];
+    if (x.passages.length) bits.push('長文 ' + x.passages.length + '(' + x.passages.map(esc).join('、') + ')');
+    if (x.shadow) bits.push('短文 ' + x.shadow);
+    if (x.ja2en) bits.push('和→英 ' + x.ja2en);
+    if (x.qa) bits.push('質問 ' + x.qa);
+    return '<div class="set-row"><b>' + esc(x.name) + '</b><span class="fine">' + bits.join(' · ') + '</span></div>';
+  }).join('') : '<p class="fine">まだ何も登録されていません。</p>') +
+  '<p class="fine">直したり消したりするときは、スプレッドシートの「練習文」シートを編集してください。</p></div>';
+}
+
+/* ---- 生徒 ---- */
+function joinLink() {
+  return location.origin + location.pathname + '?gas=' + encodeURIComponent(conn.url) + '&key=' + encodeURIComponent(conn.token);
+}
+function renderTS() {
+  $('#joinUrl').value = joinLink();
+  $('#joinNote').textContent = location.protocol === 'https:' ? '' : 'いまはファイルから開いているため、このリンクは使えません。GitHub Pages の URL で開くと、正しいリンクになります。';
+  const cs = tch.data.classes || [], act = tch.data.activity || {};
+  $('#tsList').innerHTML = cs.length ? cs.map((c) => '<div class="tform"><div class="cls-head"><h3>' + esc(c.name) + '</h3><span class="fine">' + c.students.length + '人</span></div>' +
+    '<div class="tbl-wrap"><table class="ptable"><thead><tr><th>番号</th><th>名前</th><th>直近7日の練習</th><th>最後の練習</th><th>音読の平均</th><th></th></tr></thead><tbody>' +
+    c.students.map((st) => {
+      const a = act[st.id] || {};
+      return '<tr><td class="num">' + (st.no != null ? st.no : '') + '</td><td>' + esc(st.name) + '</td>' +
+        '<td class="num">' + (a.last7 || 0) + ' 回</td><td class="' + (a.last ? '' : 'muted') + '">' + (a.last ? fmtDay(a.last) : 'まだ') + '</td>' +
+        '<td class="num"' + (a.readAvg != null ? ' data-s="' + band(a.readAvg) + '"' : '') + '>' + (a.readAvg != null ? a.readAvg + '%' : '—') + '</td>' +
+        '<td><button type="button" class="mini" data-rm="' + esc(st.id) + '">名簿から外す</button></td></tr>';
+    }).join('') + '</tbody></table></div></div>').join('')
+    : '<div class="empty-card"><p><b>名簿にまだ生徒がいません。</b></p><p class="fine">上のフォームでクラスと名前を追加すると、生徒はログイン画面で自分の名前を選べるようになります。名簿に生徒がいるあいだは、全員がログインして使います。</p></div>';
+}
+$('#tsList').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-rm]');
+  if (!b || !armOnce('rm:' + b.dataset.rm, b, 'もう一度押すと外す')) return;
+  b.disabled = true;
+  try {
+    const r = await gasCall('tRemoveStudent', { sid: b.dataset.rm });
+    tch.data.classes = r.classes;
+    $('#tStatus').textContent = '名簿から外しました。これまでの練習の記録はスプレッドシートに残っています。';
+    renderTeacher();
+  } catch (err) {
+    handleAIError(err);
+    $('#tStatus').textContent = errText(err);
+    b.disabled = false;
+  }
+});
+$('#tsForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const cls = $('#tsClass').value.trim();
+  const lines = $('#tsNames').value.split('\n').map((x) => x.trim()).filter(Boolean);
+  const st = $('#tStatus');
+  if (!cls) { st.textContent = 'クラス名を入れてください。'; return; }
+  if (!lines.length) { st.textContent = '名前を1行に1人ずつ入れてください。'; return; }
+  $('#tsSubmit').disabled = true;
+  st.textContent = '追加しています…';
+  try {
+    const r = await gasCall('tAddStudents', { cls, lines });
+    tch.data.classes = r.classes;
+    st.textContent = r.added + '人を ' + cls + ' に追加しました。' + (r.skipped ? '同じ名前の ' + r.skipped + '人はすでにいるため追加しませんでした。' : '');
+    $('#tsNames').value = '';
+    server.classMode = true;
+    store.set('server', server);
+    renderTeacher();
+  } catch (err) {
+    handleAIError(err);
+    st.textContent = '追加できませんでした。' + errText(err);
+  } finally {
+    $('#tsSubmit').disabled = false;
+  }
+});
+$('#joinCopy').addEventListener('click', async () => {
+  const input = $('#joinUrl');
+  try { await navigator.clipboard.writeText(input.value); $('#joinCopy').textContent = 'コピーしました'; }
+  catch (e) { input.select(); $('#joinCopy').textContent = '選択しました。コピーしてください'; }
+  setTimeout(() => { $('#joinCopy').textContent = 'コピー'; }, 2500);
+});
+$('#joinQrBtn').addEventListener('click', () => {
+  const box = $('#joinQr');
+  const show = box.hidden;
+  box.hidden = !show;
+  $('#joinQrBtn').setAttribute('aria-expanded', String(show));
+  if (!show) return;
+  box.innerHTML = '';
+  if (window.QRCode) {
+    try { new window.QRCode(box, { text: joinLink(), width: 220, height: 220, colorDark: '#000000', colorLight: '#ffffff', correctLevel: window.QRCode.CorrectLevel.M }); }
+    catch (e) { box.textContent = 'QRコードを作れませんでした。リンクをコピーして配ってください。'; }
+  } else box.textContent = 'QRコードの部品を読み込めませんでした。リンクをコピーして配ってください。';
+});
+
 /* ================= boot ================= */
 renderLevel();
 renderScenarioChips();
@@ -2831,9 +3689,13 @@ renderPasAll();
 if (store.get('shadowSrc', 'set') === 'my') setShadowSrc('my'); else renderShadow();
 if (store.get('quickSrc', 'std') === 'my') setQuickSrc('my'); else resetQuick();
 applyMicState();
-const startTab = TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : store.get('tab', 'talk');
+renderWho();
+renderAssignments();
+const startTab = TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : store.get(ukey('tab'), defaultTab());
 showTab(startTab, true);
 updateAIUI();
+if (aiUsable() && server.classMode && !who) openLogin();
+refreshServer();
 flushLogs();
 })();
 </script>
