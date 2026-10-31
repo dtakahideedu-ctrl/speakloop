@@ -106,7 +106,8 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
   font-size: var(--fs-sm); color: var(--ink-2); white-space: nowrap;
 }
 .pill b { color: var(--ink); font: 700 15px/1 var(--font-display); font-variant-numeric: tabular-nums; }
-button.pill:hover { border-color: var(--accent); }
+button.pill:hover, a.pill:hover { border-color: var(--accent); }
+a.pill { text-decoration: none; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-2); flex: none; }
 .ai-pill[data-state="on"] .dot { background: var(--good); }
 .ai-pill[data-state="warn"] .dot { background: var(--warn); }
@@ -557,6 +558,7 @@ body.gated .toolbar, body.gated .panel, body.gated .foot { display: none !import
       <button type="button" class="pill who-pill" id="whoPill" hidden><span id="whoText"></span></button>
       <span class="pill" title="今日、英語で話した(入力した)回数">今日 <b id="todayCount">0</b> 回</span>
       <button type="button" class="pill ai-pill" id="aiPill" data-state="off"><i class="dot"></i><span id="aiPillText">AI 確認中</span></button>
+      <a class="pill" id="writeLink" href="write.html" title="ライティング練習の WriteLoop を開きます">WriteLoop へ</a>
       <button type="button" class="btn ghost" id="settingsBtn" aria-expanded="false" aria-controls="settings">設定</button>
     </div>
   </header>
@@ -1502,8 +1504,60 @@ function AnswerBar(mount, opts) {
   };
 }
 
+/* ================= own words only: no pasting into the answer box ================= */
+/**
+ * The keyboard answer box refuses pasting, dropped text and keyboard clipboard suggestions (one long insertion),
+ * so a machine translation cannot be pasted in. Text cut or copied from an answer box can be pasted back.
+ */
+function guardOwnWords(isField, warn) {
+  const LONG = 30; // no single keystroke or word suggestion is this long
+  const prev = new WeakMap();
+  let own = '', ownUntil = 0;
+  const field = (t) => !!(t && t.nodeType === 1 && isField(t));
+  const clean = (t) => String(t || '').replace(/\r\n?/g, '\n');
+  const remember = (e) => {
+    const el = e.target;
+    if (field(el) && el.selectionStart != null) own = clean(el.value.slice(el.selectionStart, el.selectionEnd));
+  };
+  const refuse = (e) => { e.preventDefault(); warn(e.target); };
+  document.addEventListener('copy', remember, true);
+  document.addEventListener('cut', remember, true);
+  document.addEventListener('paste', (e) => {
+    if (!field(e.target)) return;
+    const t = clean(e.clipboardData ? e.clipboardData.getData('text/plain') : '');
+    if (own && t === own) { ownUntil = Date.now() + 1000; return; }
+    refuse(e);
+  }, true);
+  document.addEventListener('drop', (e) => { if (field(e.target)) refuse(e); }, true);
+  document.addEventListener('beforeinput', (e) => {
+    if (!field(e.target)) return;
+    const it = e.inputType || '';
+    if (/^insertFrom(Paste|Drop|Yank)/.test(it)) { if (Date.now() > ownUntil) refuse(e); }
+    else if (it === 'insertText' && !e.isComposing && e.data && e.data.length > LONG) refuse(e);
+  }, true);
+  document.addEventListener('focusin', (e) => { if (field(e.target)) prev.set(e.target, e.target.value); }, true);
+  // Fallback for keyboards whose insertions cannot be cancelled: undo any single jump of many characters.
+  document.addEventListener('input', (e) => {
+    const el = e.target;
+    if (!field(el)) return;
+    const before = prev.get(el);
+    if (!e.isComposing && before != null && el.value.length - before.length > LONG && !/^history/.test(e.inputType || '') && Date.now() > ownUntil) {
+      el.value = before;
+      warn(el);
+      return;
+    }
+    prev.set(el, el.value);
+  }, true);
+}
+guardOwnWords((el) => el.matches('.type-form input'), (el) => {
+  const box = el.closest('.answer');
+  if (!box) return;
+  $('.live', box).dataset.state = 'error';
+  $('.live-text', box).textContent = '貼り付けはできません。自分で英語を入力しましょう。';
+});
+
 /* ================= GAS connection (AI + records) ================= */
-const conn = Object.assign({ url: '', token: '' }, store.get('gas', {}));
+const conn =Object.assign({ url: '', token: '' }, store.get('gas', {}));
 const AI = { mode: conn.url && conn.token ? 'gas' : 'none', note: '', sheetUrl: store.get('sheetUrl', '') };
 const aiUsable = () => AI.mode === 'gas';
 

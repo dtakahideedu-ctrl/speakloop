@@ -1,0 +1,2840 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>WriteLoop</title>
+<meta name="description" content="英作文・要約・感想・ディクテーションで、英語を書いて直して身につけるアプリ(SpeakLoop のきょうだいアプリ)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="WriteLoop">
+<meta name="theme-color" content="#F4F3F8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#110F18" media="(prefers-color-scheme: dark)">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;700&family=Literata:opsz,wght@7..72,400;7..72,600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: SpeakLoop's single practice column. The writing surface is the hero: task card → editor → feedback, top to bottom. */
+:root {
+  --bg: #F4F3F8;
+  --surface: #FFFFFF;
+  --surface-2: #EBE8F3;
+  --ink: #18151F;
+  --ink-2: #5A5568;
+  --line: #DAD5E5;
+  --accent: #6A3DB8;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #ECE5F8;
+  --good: #1A7C54;
+  --good-soft: #DAF0E4;
+  --miss: #BE3A2C;
+  --miss-soft: #FAE3DF;
+  --warn: #94600F;
+  --warn-soft: #F6EAD2;
+  --rec: #D4392B;
+  --rec-ink: #FFFFFF;
+  --shadow: 0 1px 2px rgb(24 21 31 / 0.06), 0 6px 20px rgb(24 21 31 / 0.06);
+
+  --font-display: "Familjen Grotesk", "Zen Kaku Gothic New", system-ui, sans-serif;
+  --font-body: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", "Yu Gothic", system-ui, sans-serif;
+  --font-read: "Literata", Georgia, "Times New Roman", serif;
+
+  --fs-xs: 12px; --fs-sm: 13px; --fs-md: 15px; --fs-lg: 18px; --fs-xl: 24px; --fs-xxl: 44px;
+  --r-sm: 8px; --r-md: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #110F18; --surface: #1A1724; --surface-2: #252134; --ink: #EAE7F2; --ink-2: #A8A2B9; --line: #322D44;
+    --accent: #B69CF5; --accent-ink: #160F28; --accent-soft: #2C2346;
+    --good: #5BC994; --good-soft: #163428; --miss: #FF8475; --miss-soft: #3D1F1C; --warn: #E2AD55; --warn-soft: #382B13;
+    --rec: #FF6A5B; --rec-ink: #1A0907;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 6px 20px rgb(0 0 0 / 0.25);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #110F18; --surface: #1A1724; --surface-2: #252134; --ink: #EAE7F2; --ink-2: #A8A2B9; --line: #322D44;
+  --accent: #B69CF5; --accent-ink: #160F28; --accent-soft: #2C2346;
+  --good: #5BC994; --good-soft: #163428; --miss: #FF8475; --miss-soft: #3D1F1C; --warn: #E2AD55; --warn-soft: #382B13;
+  --rec: #FF6A5B; --rec-ink: #1A0907;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 6px 20px rgb(0 0 0 / 0.25);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 var(--fs-md)/1.65 var(--font-body); -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: 0.5; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.app {
+  max-width: 780px; margin: 0 auto; padding-block: 18px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px;
+}
+
+/* ---------- header ---------- */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.lines { display: inline-grid; gap: 4px; width: 26px; }
+.lines i { display: block; height: 4px; border-radius: 2px; background: var(--accent); }
+.lines i:nth-child(1) { width: 26px; } .lines i:nth-child(2) { width: 19px; } .lines i:nth-child(3) { width: 23px; } .lines i:nth-child(4) { width: 11px; }
+.wordmark { font: 700 26px/1 var(--font-display); letter-spacing: -0.02em; }
+.brand small { display: block; font-size: var(--fs-xs); color: var(--ink-2); letter-spacing: 0.04em; margin-top: 3px; }
+.top-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); font-size: var(--fs-sm); color: var(--ink-2); white-space: nowrap; }
+.pill b { color: var(--ink); font: 700 15px/1 var(--font-display); font-variant-numeric: tabular-nums; }
+button.pill:hover, a.pill:hover { border-color: var(--accent); }
+a.pill { text-decoration: none; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-2); flex: none; }
+.ai-pill[data-state="on"] .dot { background: var(--good); }
+.ai-pill[data-state="warn"] .dot { background: var(--warn); }
+.who-pill { color: var(--ink); font-weight: 700; }
+
+/* ---------- buttons ---------- */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 15px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font-weight: 700; font-size: 14px; line-height: 1.2; transition: border-color .15s, background .15s; }
+.btn:hover:not(:disabled) { border-color: var(--accent); }
+a.btn { text-decoration: none; color: inherit; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover:not(:disabled) { filter: brightness(1.08); }
+.btn.ghost { background: transparent; }
+.btn.big { padding: 12px 22px; font-size: 16px; }
+.btn svg { flex: none; }
+.mini { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); background: transparent; font-size: var(--fs-xs); font-weight: 700; color: var(--ink-2); }
+.mini:hover, .mini[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+a.mini { text-decoration: none; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* ---------- settings ---------- */
+.settings { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 18px; display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.settings h3 { margin: 0 0 8px; font: 700 var(--fs-sm)/1.3 var(--font-body); color: var(--ink-2); letter-spacing: 0.04em; }
+.field { display: grid; gap: 8px; min-width: 0; }
+.field-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.field input[type="range"] { flex: 1; min-width: 120px; accent-color: var(--accent); }
+.field select, .field input[type="password"], .field input[type="text"] { width: 100%; min-width: 0; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); }
+.out { font: 700 15px/1 var(--font-display); font-variant-numeric: tabular-nums; min-width: 3.4em; }
+.fine { margin: 0; font-size: var(--fs-xs); color: var(--ink-2); line-height: 1.6; }
+.check { display: flex; align-items: center; gap: 6px; font-size: var(--fs-sm); }
+.ai-setup { grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 16px; display: grid; gap: 10px; }
+.status-line { margin: 0; font-size: var(--fs-sm); }
+.status-line.ok { color: var(--good); } .status-line.bad { color: var(--miss); }
+
+/* ---------- tabs ---------- */
+.toolbar { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.seg { display: inline-flex; padding: 4px; gap: 4px; border-radius: 12px; background: var(--surface-2); max-width: 100%; flex-wrap: wrap; }
+.seg button { border: 0; background: transparent; padding: 8px 14px; border-radius: 9px; font-weight: 700; font-size: 14px; color: var(--ink-2); white-space: nowrap; }
+.seg button[aria-selected="true"], .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.seg.small button { padding: 6px 11px; font-size: 13px; }
+.tabs { display: flex; width: 100%; flex-wrap: nowrap; }
+.tabs button { flex: 1; padding: 11px 8px; font-size: 15px; white-space: normal; line-height: 1.3; }
+.tabs .sm { display: none; }
+.tab-badge { display: inline-block; margin-left: 4px; min-width: 1.5em; padding: 1px 6px; border-radius: 999px; background: var(--rec); color: var(--rec-ink); font: 700 11px/1.4 var(--font-display); font-variant-numeric: tabular-nums; vertical-align: 1px; }
+
+/* ---------- panels ---------- */
+.panel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.eyebrow { font-size: var(--fs-xs); font-weight: 700; letter-spacing: 0.08em; color: var(--accent); }
+.counter { font: 700 15px/1 var(--font-display); font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.src-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.my-sel { flex: 1 1 260px; min-width: 0; max-width: 100%; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font-weight: 700; font-size: 14px; }
+.src-note { flex-basis: 100%; }
+.ai-off { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 14px 16px; font-size: var(--fs-sm); display: grid; gap: 8px; }
+.ai-off p { margin: 0; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 20px 22px 18px; display: grid; gap: 12px; box-shadow: var(--shadow); min-width: 0; }
+.card h4, .result h4 { margin: 0; font-size: var(--fs-sm); color: var(--ink-2); letter-spacing: 0.04em; }
+.card-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.card-tools { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.prompt { margin: 0; font: 400 23px/1.45 var(--font-read); text-wrap: balance; overflow-wrap: anywhere; }
+.prompt.ja-q { font: 700 20px/1.5 var(--font-body); }
+.card .ja, .task-ja { margin: 0; color: var(--ink-2); font-size: var(--fs-md); white-space: pre-line; }
+.meta-line { font-size: var(--fs-xs); color: var(--ink-2); font-variant-numeric: tabular-nums; display: flex; gap: 6px 12px; flex-wrap: wrap; }
+.kbadge { display: inline-block; padding: 2px 8px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 700; letter-spacing: 0.04em; white-space: nowrap; }
+.empty-text { margin: 0; color: var(--ink-2); font-size: var(--fs-md); }
+
+/* rubric */
+.rubric-box summary { cursor: pointer; font-weight: 700; font-size: var(--fs-sm); color: var(--ink-2); }
+.rtable { border-collapse: collapse; width: 100%; font-size: var(--fs-sm); margin-top: 8px; }
+.rtable th, .rtable td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.rtable th { font-size: var(--fs-xs); color: var(--ink-2); }
+.rtable td.pts { white-space: nowrap; font: 700 13px/1.4 var(--font-display); font-variant-numeric: tabular-nums; }
+.rtable tr:last-child td { border-bottom: 0; }
+
+/* passage (要約・感想) */
+.ptext { margin: 0; display: grid; gap: 12px; transition: filter .2s; }
+.ptext p { margin: 0; font: 400 19px/1.7 var(--font-read); overflow-wrap: anywhere; }
+.ptext p .pja { display: block; margin-top: 4px; font: 400 var(--fs-sm)/1.6 var(--font-body); color: var(--ink-2); }
+.ptext.veiled { filter: blur(8px); user-select: none; }
+.pas-editor { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.pas-editor input, .pas-editor textarea { width: 100%; min-width: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); }
+.pas-editor textarea { font: 400 16px/1.6 var(--font-read); resize: vertical; min-height: 150px; }
+.num-in { width: 5.5em !important; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); font-variant-numeric: tabular-nums; }
+
+/* ---------- editor ---------- */
+.flow { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.flow:empty { display: none; }
+.editor { display: grid; gap: 8px; min-width: 0; }
+.editor-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.wtext {
+  width: 100%; min-height: 230px; padding: 16px 18px; border-radius: var(--r-md); border: 1px solid var(--line);
+  background: var(--surface); box-shadow: var(--shadow); resize: vertical;
+  font: 400 19px/1.75 var(--font-read); overflow-wrap: anywhere;
+}
+.wtext:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+.wc { font: 700 14px/1 var(--font-display); font-variant-numeric: tabular-nums; color: var(--ink-2); white-space: nowrap; }
+.wc small { font: 400 var(--fs-xs) var(--font-body); margin-left: 4px; }
+.wc[data-s="good"] { color: var(--good); } .wc[data-s="warn"] { color: var(--warn); }
+.flow-msg { margin: 0; font-size: var(--fs-sm); color: var(--miss); }
+.flow-msg:empty { display: none; }
+.busy { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-radius: var(--r-md); background: var(--accent-soft); font-size: var(--fs-sm); }
+.typing { display: inline-flex; gap: 4px; }
+.typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: blink 1.2s infinite; }
+.typing i:nth-child(2) { animation-delay: .2s; } .typing i:nth-child(3) { animation-delay: .4s; }
+@keyframes blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+.steps { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: var(--fs-xs); color: var(--ink-2); }
+.steps span { padding: 3px 9px; border-radius: 999px; background: var(--surface-2); font-weight: 700; }
+.steps span[aria-current="step"] { background: var(--accent); color: var(--accent-ink); }
+.steps span.done { background: var(--accent-soft); color: var(--accent); }
+
+/* ---------- feedback ---------- */
+.result { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 18px; display: grid; gap: 12px; min-width: 0; }
+.score-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.score { font: 700 var(--fs-xxl)/1 var(--font-display); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.score small { font-size: 20px; margin-left: 2px; color: var(--ink-2); }
+.score .from { font-size: 26px; color: var(--ink-2); margin-right: 4px; }
+.score[data-s="good"] { color: var(--good); } .score[data-s="warn"] { color: var(--warn); } .score[data-s="miss"] { color: var(--miss); }
+.delta { font: 700 15px/1 var(--font-display); font-variant-numeric: tabular-nums; padding: 4px 8px; border-radius: 6px; background: var(--good-soft); color: var(--good); }
+.delta.zero { background: var(--surface-2); color: var(--ink-2); }
+.verdict { font-weight: 700; }
+.crit { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.crit li { display: grid; grid-template-columns: 5.5em minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; }
+.crit .c-name { font-weight: 700; font-size: var(--fs-sm); }
+.crit .c-bar { height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; position: relative; }
+.crit .c-bar i { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: var(--accent); }
+.crit .c-bar .tick { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--ink); opacity: .55; }
+.crit .c-val { font: 700 14px/1 var(--font-display); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.crit .c-val .from { color: var(--ink-2); font-weight: 500; }
+.crit .c-note { grid-column: 2 / -1; margin: 0; font-size: var(--fs-sm); color: var(--ink-2); }
+.say { margin: 0; display: grid; gap: 2px; }
+.say b { font-size: var(--fs-xs); letter-spacing: 0.04em; color: var(--ink-2); }
+.say span { font-size: var(--fs-md); }
+.draft { margin: 0; white-space: pre-wrap; font: 400 18px/1.85 var(--font-read); overflow-wrap: anywhere; }
+mark.iss { background: var(--warn-soft); color: inherit; border-bottom: 2px solid var(--warn); border-radius: 3px; padding: 0 1px; }
+.iss-n { display: inline-block; min-width: 1.4em; margin-left: 2px; padding: 0 4px; border-radius: 999px; background: var(--warn); color: var(--surface); font: 700 10px/1.5 var(--font-display); text-align: center; vertical-align: 3px; }
+.issues { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.issues li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; align-items: baseline; padding-top: 10px; border-top: 1px solid var(--line); }
+.issues li:first-child { border-top: 0; padding-top: 0; }
+.issues .iss-n { vertical-align: 0; font-size: 11px; }
+.issues .q { font: 400 16px/1.5 var(--font-read); overflow-wrap: anywhere; }
+.issues .h { grid-column: 2; font-size: var(--fs-md); }
+.tag { display: inline-block; padding: 1px 7px; border-radius: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; background: var(--surface-2); color: var(--ink-2); margin-right: 6px; vertical-align: 1px; }
+.wdiff del { color: var(--miss); background: var(--miss-soft); text-decoration: line-through; text-decoration-thickness: 1.5px; border-radius: 3px; padding: 0 2px; }
+.wdiff ins { color: var(--good); background: var(--good-soft); text-decoration: none; font-weight: 600; border-radius: 3px; padding: 0 2px; }
+.legend { display: flex; gap: 14px; font-size: var(--fs-xs); color: var(--ink-2); flex-wrap: wrap; }
+.legend del, .legend ins { padding: 0 4px; border-radius: 3px; }
+.legend del { color: var(--miss); background: var(--miss-soft); }
+.legend ins { color: var(--good); background: var(--good-soft); text-decoration: none; }
+.fixes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.fixes li { display: grid; gap: 1px; padding-top: 8px; border-top: 1px solid var(--line); }
+.fixes li:first-child { border-top: 0; padding-top: 0; }
+.fixes .ft { font: 400 16px/1.5 var(--font-read); overflow-wrap: anywhere; }
+.fixes .ft s { color: var(--miss); text-decoration-thickness: 1.5px; }
+.fixes .ft b { color: var(--good); font-weight: 600; }
+.fixes .fw { font-size: var(--fs-sm); color: var(--ink-2); }
+.model { margin: 0; padding: 14px 16px; border-radius: 10px; background: var(--bg); border-left: 3px solid var(--accent); white-space: pre-wrap; font: 400 17px/1.75 var(--font-read); overflow-wrap: anywhere; }
+.prev-note { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px 12px; border-radius: 10px; background: var(--good-soft); font-size: var(--fs-sm); }
+.prev-note p { margin: 0; flex: 1; min-width: 0; }
+
+/* ---------- dictation ---------- */
+.listen-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.rate-chips { display: inline-flex; gap: 4px; }
+.rate-chips button { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 6px 9px; font: 700 13px/1 var(--font-display); font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.rate-chips button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.dots { display: flex; gap: 5px; flex-wrap: wrap; }
+.dots button { width: 26px; height: 8px; padding: 0; border: 0; border-radius: 4px; background: var(--surface-2); }
+.dots button[data-s="good"] { background: var(--good); } .dots button[data-s="warn"] { background: var(--warn); } .dots button[data-s="miss"] { background: var(--miss); }
+.dots button[aria-current="true"] { outline: 2px solid var(--accent); outline-offset: 2px; }
+.dict-in { width: 100%; min-height: 96px; padding: 14px 16px; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--bg); resize: vertical; font: 400 20px/1.6 var(--font-read); }
+.dict-in:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+.dict-hint { margin: 0; font: 400 19px/1.7 var(--font-read); letter-spacing: 0.06em; color: var(--ink-2); overflow-wrap: anywhere; }
+.dict-hint .wbox { display: inline-block; margin-right: 6px; border-bottom: 2px solid var(--line); min-width: 1.2em; }
+.diff { margin: 0; font: 400 20px/1.7 var(--font-read); overflow-wrap: anywhere; }
+.diff .ok { color: var(--good); }
+.diff .ng { color: var(--miss); text-decoration: underline wavy var(--miss); text-underline-offset: 4px; }
+.diff .sp { color: var(--warn); text-decoration: underline dotted var(--warn); text-underline-offset: 4px; }
+.diff .sp small { font: 400 13px var(--font-body); color: var(--ink-2); margin-left: 2px; }
+.heard { margin: 0; font-size: var(--fs-sm); color: var(--ink-2); overflow-wrap: anywhere; }
+.heard span { font-family: var(--font-read); }
+.nav-row { display: flex; gap: 8px; justify-content: space-between; flex-wrap: wrap; }
+
+/* ---------- login ---------- */
+.login { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 20px; display: grid; gap: 14px; box-shadow: var(--shadow); }
+.login-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.login h2 { margin: 0; font: 700 var(--fs-xl)/1.3 var(--font-body); text-wrap: balance; }
+.login-current { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); }
+.login-current p { margin: 0; flex: 1; min-width: 0; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 7px 14px; font-weight: 700; font-size: 14px; }
+.chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.name-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.name-btn { display: flex; align-items: baseline; gap: 8px; text-align: left; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); font-weight: 700; font-size: 16px; min-width: 0; }
+.name-btn:hover { border-color: var(--accent); }
+.name-btn[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.name-btn .no { font: 700 13px/1 var(--font-display); color: var(--ink-2); font-variant-numeric: tabular-nums; min-width: 1.6em; }
+.name-btn .nm { min-width: 0; overflow-wrap: anywhere; }
+.login-confirm { display: grid; gap: 10px; padding: 14px; border-radius: 12px; border: 1px solid var(--accent); background: var(--accent-soft); }
+.login-confirm p { margin: 0; font-size: var(--fs-lg); font-weight: 700; }
+.teacher-login { border-top: 1px solid var(--line); padding-top: 12px; }
+.teacher-login summary { cursor: pointer; font-weight: 700; font-size: var(--fs-sm); color: var(--ink-2); }
+.teacher-form { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.teacher-form input { flex: 1 1 200px; min-width: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); }
+body.gated .toolbar, body.gated .panel, body.gated .foot { display: none !important; }
+
+/* ---------- assignments ---------- */
+.asg-list { display: grid; gap: 12px; }
+.acard, .tcard, .empty-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 16px 18px; display: grid; gap: 10px; min-width: 0; }
+.acard[data-done="true"] { border-color: var(--good); }
+.acard-top, .tcard-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.acard h3, .tcard h3 { margin: 0; font: 700 var(--fs-lg)/1.35 var(--font-body); overflow-wrap: anywhere; }
+.acard p, .tcard p, .empty-card p { margin: 0; }
+.state { flex: none; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--warn-soft); color: var(--warn); white-space: nowrap; }
+.state.done { background: var(--good-soft); color: var(--good); }
+.state.closed, .state.none { background: var(--surface-2); color: var(--ink-2); }
+.aprog { display: flex; align-items: center; gap: 10px; }
+.aprog-bar { flex: 1; height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+.aprog-bar i { display: block; height: 100%; border-radius: 4px; background: var(--good); }
+.aprog-n { font: 700 13px/1 var(--font-display); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.asg-banner { display: grid; gap: 4px; padding: 12px 14px; border-radius: var(--r-md); border: 1px solid var(--accent); background: var(--accent-soft); }
+.asg-banner p { margin: 0; font-size: var(--fs-sm); }
+.ok-text { color: var(--good); font-weight: 700; }
+
+/* ---------- records ---------- */
+.tiles, .avgs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.tile, .avg { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 14px 16px; min-width: 0; }
+.tile { display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap; }
+.tile-label { width: 100%; font-size: var(--fs-xs); font-weight: 700; color: var(--ink-2); letter-spacing: 0.04em; }
+.tile-num { font: 700 34px/1.05 var(--font-display); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.tile-unit { font-size: var(--fs-sm); color: var(--ink-2); }
+.avg { display: grid; gap: 4px; align-content: start; }
+.avg-num { font: 700 26px/1.1 var(--font-display); font-variant-numeric: tabular-nums; }
+.recent { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 16px; min-width: 0; }
+.recent h3 { margin: 0 0 6px; font-size: var(--fs-sm); }
+.recent ol { list-style: none; margin: 0; padding: 0; display: grid; }
+.recent li { display: grid; grid-template-columns: 6.2em minmax(0, 1fr) auto; gap: 4px 10px; padding: 10px 0; border-top: 1px solid var(--line); align-items: baseline; }
+.recent li:first-child { border-top: 0; }
+.r-when { font-size: var(--fs-xs); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.r-what { min-width: 0; display: grid; gap: 1px; }
+.r-mode { font-size: 11px; font-weight: 700; color: var(--ink-2); letter-spacing: 0.04em; }
+.r-text { font: 400 15px/1.45 var(--font-read); overflow-wrap: anywhere; }
+.r-side { display: flex; gap: 8px; align-items: baseline; }
+.r-score { font: 700 14px/1 var(--font-display); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.r-score[data-s="good"] { color: var(--good); } .r-score[data-s="warn"] { color: var(--warn); } .r-score[data-s="miss"] { color: var(--miss); }
+.r-detail { grid-column: 1 / -1; display: grid; gap: 12px; padding-top: 6px; }
+
+/* ---------- teacher ---------- */
+.tsec { display: grid; gap: 12px; }
+.tform { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.tform h3 { margin: 0 0 4px; font: 700 var(--fs-md)/1.4 var(--font-body); }
+.tform input[type="text"], .tform input[type="number"], .tform textarea, .tform select { width: 100%; min-width: 0; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); }
+.tform input[type="number"] { width: 6em; }
+.tform textarea { font: 400 15px/1.6 var(--font-read); resize: vertical; }
+.tform textarea.plain { font: 400 14px/1.6 var(--font-body); }
+.tgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px 12px; }
+.tpart { display: grid; gap: 8px; }
+.tfield { border: 0; margin: 0; padding: 0; display: grid; gap: 6px; }
+.checks { display: flex; gap: 6px 14px; flex-wrap: wrap; }
+.checks label { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); }
+.tlist { display: grid; gap: 10px; }
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+.ptable { border-collapse: collapse; width: 100%; font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
+.ptable th, .ptable td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+.ptable th { font-size: var(--fs-xs); color: var(--ink-2); font-weight: 700; background: var(--bg); position: sticky; top: 0; }
+.ptable td.num { text-align: right; }
+.ptable td[data-s="good"] { color: var(--good); font-weight: 700; }
+.ptable td[data-s="warn"] { color: var(--warn); }
+.ptable td[data-s="miss"] { color: var(--miss); }
+.ptable tr:last-child td { border-bottom: 0; }
+.ptable .muted { color: var(--ink-2); }
+.ptable tr[aria-current="true"] td { background: var(--accent-soft); }
+.cls-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.cls-head h3 { margin: 0; font: 700 var(--fs-md)/1.4 var(--font-body); }
+.set-row { display: grid; gap: 2px; padding: 10px 0; border-top: 1px solid var(--line); }
+.set-row:first-of-type { border-top: 0; padding-top: 0; }
+.viewer { border-top: 1px dashed var(--line); padding-top: 12px; display: grid; gap: 12px; }
+.viewer-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.viewer-head h4 { margin: 0; font: 700 var(--fs-md)/1.4 var(--font-body); }
+.join-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.join-row input { flex: 1 1 260px; min-width: 0; font: 400 13px/1.4 ui-monospace, Menlo, Consolas, monospace; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); }
+.qr { justify-self: start; padding: 12px; background: #fff; border-radius: 10px; border: 1px solid var(--line); }
+.qr img, .qr canvas { display: block; }
+
+.foot { font-size: var(--fs-xs); color: var(--ink-2); line-height: 1.7; display: grid; gap: 2px; }
+.foot p { margin: 0; }
+
+@media (max-width: 520px) {
+  .tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .tabs .lg { display: none; }
+  .tabs .sm { display: inline; }
+  .tabs button { font-size: 13px; padding: 10px 4px; }
+  .wordmark { font-size: 22px; }
+  .login { padding: 16px; }
+  .login h2 { font-size: 20px; }
+  .name-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .card { padding: 18px 16px 16px; }
+  .prompt { font-size: 20px; }
+  .wtext { font-size: 17px; padding: 14px; min-height: 200px; }
+  .draft { font-size: 17px; }
+  .ptext p { font-size: 17px; }
+  .crit li { grid-template-columns: 4.6em minmax(0, 1fr) auto; }
+  .tile-num { font-size: 26px; }
+  .tile, .avg { padding: 12px; }
+  .avg-num { font-size: 22px; }
+  .recent li { grid-template-columns: minmax(0, 1fr) auto; }
+  .r-when { grid-column: 1 / -1; }
+  .score { font-size: 38px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .typing i { animation: none; opacity: .7; }
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="top">
+    <div class="brand">
+      <span class="lines" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <div>
+        <div class="wordmark">WriteLoop</div>
+        <small>書いて、ヒントで直して、また書く。英語ライティング練習</small>
+      </div>
+    </div>
+    <div class="top-meta">
+      <button type="button" class="pill who-pill" id="whoPill" hidden><span id="whoText"></span></button>
+      <span class="pill" title="今日、提出・答え合わせした回数">今日 <b id="todayCount">0</b> 件</span>
+      <button type="button" class="pill ai-pill" id="aiPill" data-state="off"><i class="dot"></i><span id="aiPillText">AI 確認中</span></button>
+      <a class="pill" id="speakLink" href="index.html" title="スピーキング練習の SpeakLoop を開きます">SpeakLoop へ</a>
+      <button type="button" class="btn ghost" id="settingsBtn" aria-expanded="false" aria-controls="settings">設定</button>
+    </div>
+  </header>
+
+  <section class="settings" id="settings" hidden aria-label="設定">
+    <div class="field">
+      <h3>読み上げの速さ(ディクテーション・模範例)</h3>
+      <div class="field-row">
+        <input type="range" id="rateInput" min="0.6" max="1.2" step="0.05" value="0.9" aria-label="読み上げの速さ">
+        <span class="out" id="rateOut">0.90x</span>
+      </div>
+    </div>
+    <div class="field">
+      <h3>読み上げの声</h3>
+      <div class="field-row"><select id="voiceSelect" aria-label="読み上げの声"><option value="">自動で選ぶ</option></select></div>
+      <div class="field-row">
+        <button type="button" class="mini" id="voiceTest">試しに聞く</button>
+        <span class="fine" id="voiceNote"></span>
+      </div>
+    </div>
+    <div class="ai-setup" id="whoSetup" hidden>
+      <h3>利用者</h3>
+      <p class="status-line" id="whoStatus"></p>
+      <div class="field-row">
+        <button type="button" class="btn" id="whoSwitch">利用者を切り替える</button>
+        <button type="button" class="mini" id="whoLogout" hidden>ログアウト</button>
+      </div>
+    </div>
+    <div class="ai-setup">
+      <h3>AI と記録(Google Apps Script)</h3>
+      <p class="status-line" id="aiStatus">確認しています…</p>
+      <form class="field" id="gasForm" novalidate autocomplete="off">
+        <label for="gasUrl" class="fine">GAS ウェブアプリの URL(/exec で終わるもの。SpeakLoop と同じものです)</label>
+        <input type="text" id="gasUrl" placeholder="https://script.google.com/macros/s/…/exec" spellcheck="false" autocapitalize="off" inputmode="url">
+        <label for="gasToken" class="fine">合言葉(GAS の setup で表示された APP_TOKEN)</label>
+        <input type="password" id="gasToken" placeholder="合言葉" spellcheck="false" autocapitalize="off">
+        <div class="field-row">
+          <button type="submit" class="btn" id="gasSave">接続する</button>
+          <button type="button" class="mini" id="gasClear" hidden>接続を解除</button>
+          <a class="mini" id="sheetLinkSettings" href="#" target="_blank" rel="noopener" hidden>スプレッドシートを開く</a>
+        </div>
+        <p class="fine">URL と合言葉は、この端末のブラウザにだけ保存されます(同じ端末の SpeakLoop と共通)。Anthropic の API キーは GAS 側に保管され、ブラウザには届きません。</p>
+      </form>
+    </div>
+  </section>
+
+  <section class="login" id="loginPanel" hidden aria-labelledby="loginTitle">
+    <div class="login-head">
+      <h2 id="loginTitle">クラスと名前を選んでください</h2>
+      <button type="button" class="mini" id="loginClose" hidden>閉じる</button>
+    </div>
+    <p class="fine" id="loginMsg" aria-live="polite"></p>
+    <div class="login-current" id="loginCurrent" hidden>
+      <p id="loginCurrentText"></p>
+      <button type="button" class="mini" id="loginLogout">ログアウト</button>
+    </div>
+    <div class="chips" id="loginClasses" role="group" aria-label="クラス"></div>
+    <div class="name-grid" id="loginNames"></div>
+    <div class="login-confirm" id="loginConfirm" hidden>
+      <p id="loginConfirmText"></p>
+      <div class="actions">
+        <button type="button" class="btn primary" id="loginGo">はじめる</button>
+        <button type="button" class="btn" id="loginBack">選び直す</button>
+      </div>
+    </div>
+    <details class="teacher-login" id="teacherLogin">
+      <summary>先生はこちら</summary>
+      <form class="teacher-form" id="teacherForm" novalidate autocomplete="off">
+        <label class="sr-only" for="teacherPw">先生用パスワード</label>
+        <input type="password" id="teacherPw" placeholder="先生用パスワード" autocomplete="current-password">
+        <button type="submit" class="btn" id="teacherGo">先生としてログイン</button>
+      </form>
+      <p class="fine" id="teacherMsg" aria-live="polite"></p>
+    </details>
+  </section>
+
+  <div class="toolbar">
+    <div class="seg tabs" role="tablist" aria-label="練習モード">
+      <button type="button" role="tab" id="tabbtn-assign" aria-controls="tab-assign" data-tab="assign" aria-selected="false" hidden>課題<span class="tab-badge" id="asgBadge" hidden></span></button>
+      <button type="button" role="tab" id="tabbtn-essay" aria-controls="tab-essay" data-tab="essay" aria-selected="true">英作文</button>
+      <button type="button" role="tab" id="tabbtn-read" aria-controls="tab-read" data-tab="read" aria-selected="false"><span class="lg">要約・感想</span><span class="sm">要約・感想</span></button>
+      <button type="button" role="tab" id="tabbtn-dict" aria-controls="tab-dict" data-tab="dict" aria-selected="false"><span class="lg">ディクテーション</span><span class="sm">書き取り</span></button>
+      <button type="button" role="tab" id="tabbtn-log" aria-controls="tab-log" data-tab="log" aria-selected="false">記録</button>
+      <button type="button" role="tab" id="tabbtn-teacher" aria-controls="tab-teacher" data-tab="teacher" aria-selected="false" hidden>先生</button>
+    </div>
+  </div>
+
+  <!-- ===== 課題(生徒) ===== -->
+  <section class="panel" id="tab-assign" role="tabpanel" aria-labelledby="tabbtn-assign" hidden>
+    <div class="panel-head">
+      <span class="eyebrow">先生から配信された課題</span>
+      <button type="button" class="btn" id="asgRefresh">更新</button>
+    </div>
+    <p class="fine" id="asgStatus" aria-live="polite"></p>
+    <div class="asg-list" id="asgList"></div>
+  </section>
+
+  <!-- ===== 英作文 ===== -->
+  <section class="panel" id="tab-essay" role="tabpanel" aria-labelledby="tabbtn-essay">
+    <div class="src-row">
+      <label class="sr-only" for="esSel">お題</label>
+      <select id="esSel" class="my-sel"></select>
+      <button type="button" class="mini" id="esReload">ライブラリを読み込み直す</button>
+      <p class="fine src-note" id="esNote"></p>
+    </div>
+    <div class="asg-banner" id="esAssign" hidden></div>
+    <form class="pas-editor" id="esCustom" novalidate hidden autocomplete="off">
+      <label for="esCustomQ" class="fine">お題(英語でも日本語でも書けます)</label>
+      <textarea id="esCustomQ" rows="3" spellcheck="false" placeholder="例: What do you want to do this summer? Why?"></textarea>
+      <div class="field-row">
+        <span class="fine">語数</span>
+        <input type="number" class="num-in" id="esCustomMin" min="10" max="400" step="5" value="50" aria-label="最小の語数">
+        <span>〜</span>
+        <input type="number" class="num-in" id="esCustomMax" min="10" max="400" step="5" value="80" aria-label="最大の語数">
+        <span class="fine">語</span>
+      </div>
+      <div class="actions"><button type="submit" class="btn primary">このお題で書く</button></div>
+    </form>
+    <article class="card" id="esTask"></article>
+    <div class="flow" id="esFlow"></div>
+  </section>
+
+  <!-- ===== 要約・感想 ===== -->
+  <section class="panel" id="tab-read" role="tabpanel" aria-labelledby="tabbtn-read" hidden>
+    <div class="src-row">
+      <label class="sr-only" for="rdSel">本文</label>
+      <select id="rdSel" class="my-sel"></select>
+      <div class="actions">
+        <button type="button" class="mini" id="rdNew">英文を貼り付ける</button>
+        <button type="button" class="mini" id="rdDel" hidden>この英文を削除</button>
+        <button type="button" class="mini" id="rdReload">ライブラリを読み込み直す</button>
+      </div>
+      <p class="fine src-note" id="rdNote"></p>
+    </div>
+    <div class="asg-banner" id="rdAssign" hidden></div>
+    <form class="pas-editor" id="rdEditor" novalidate hidden autocomplete="off">
+      <label for="rdTitle" class="fine">タイトル(空欄なら書き出しの数語を使います)</label>
+      <input type="text" id="rdTitle" placeholder="例: Unit 5 Reading">
+      <label for="rdInput" class="fine">英文(段落のあいだに空行を入れます)</label>
+      <textarea id="rdInput" rows="8" spellcheck="false" placeholder="ここに英文を貼り付けます"></textarea>
+      <div class="actions">
+        <button type="submit" class="btn primary">保存して使う</button>
+        <button type="button" class="btn" id="rdCancel">キャンセル</button>
+      </div>
+    </form>
+    <div class="seg small" id="rdKind" role="group" aria-label="書くもの">
+      <button type="button" data-kind="要約" aria-pressed="true">要約する</button>
+      <button type="button" data-kind="感想" aria-pressed="false">感想・意見を書く</button>
+    </div>
+    <article class="card" id="rdCard">
+      <div class="card-head">
+        <span class="eyebrow" id="rdEyebrow">本文</span>
+        <div class="card-tools">
+          <button type="button" class="mini" id="rdJaBtn" aria-pressed="false">訳を表示</button>
+          <button type="button" class="mini" id="rdHideBtn" aria-pressed="false">本文を隠す</button>
+          <button type="button" class="mini" id="rdPlay">読み上げ</button>
+        </div>
+      </div>
+      <div class="ptext" id="rdBody"></div>
+    </article>
+    <article class="card" id="rdTask"></article>
+    <div class="flow" id="rdFlow"></div>
+  </section>
+
+  <!-- ===== ディクテーション ===== -->
+  <section class="panel" id="tab-dict" role="tabpanel" aria-labelledby="tabbtn-dict" hidden>
+    <div class="src-row">
+      <label class="sr-only" for="dcSel">書き取る英文</label>
+      <select id="dcSel" class="my-sel"></select>
+      <button type="button" class="mini" id="dcReload">ライブラリを読み込み直す</button>
+      <p class="fine src-note" id="dcNote"></p>
+    </div>
+    <div class="asg-banner" id="dcAssign" hidden></div>
+    <div class="dots" id="dcDots" aria-label="各文の最高点"></div>
+    <article class="card">
+      <div class="card-head">
+        <span class="eyebrow" id="dcEyebrow">聞こえた英文を、そのまま書きましょう</span>
+        <span class="counter" id="dcCounter">1 / 1</span>
+      </div>
+      <div class="listen-row">
+        <button type="button" class="btn primary big" id="dcPlay"></button>
+        <div class="rate-chips" role="group" aria-label="読み上げの速さ">
+          <button type="button" data-rate="0.7">0.7x</button>
+          <button type="button" data-rate="0.85">0.85x</button>
+          <button type="button" data-rate="1">1.0x</button>
+        </div>
+        <span class="fine" id="dcPlays"></span>
+      </div>
+      <div class="card-tools">
+        <button type="button" class="mini" id="dcHintWords" aria-pressed="false">語数のヒント</button>
+        <button type="button" class="mini" id="dcHintFirst" aria-pressed="false">最初の文字</button>
+      </div>
+      <p class="dict-hint" id="dcHint" hidden></p>
+      <label class="sr-only" for="dcInput">聞こえた英文</label>
+      <textarea id="dcInput" class="dict-in" rows="2" spellcheck="false" autocapitalize="off" autocorrect="off" autocomplete="off" placeholder="聞こえた英文を書きます"></textarea>
+      <div class="actions">
+        <button type="button" class="btn primary" id="dcCheck">答え合わせ</button>
+        <span class="fine">Enter でも答え合わせできます。大文字・小文字と記号は採点しません。</span>
+      </div>
+      <p class="flow-msg" id="dcMsg" role="alert"></p>
+    </article>
+    <div class="result" id="dcResult" hidden aria-live="polite"></div>
+    <div class="nav-row">
+      <button type="button" class="btn" id="dcPrev">前の文</button>
+      <button type="button" class="btn" id="dcNext">次の文</button>
+    </div>
+  </section>
+
+  <!-- ===== 記録 ===== -->
+  <section class="panel" id="tab-log" role="tabpanel" aria-labelledby="tabbtn-log" hidden>
+    <div class="panel-head">
+      <span class="eyebrow">書いた記録 · Google スプレッドシート</span>
+      <div class="actions">
+        <a class="btn" id="sheetLink" href="#" target="_blank" rel="noopener" hidden>スプレッドシートを開く</a>
+        <button type="button" class="btn" id="logRefresh">更新</button>
+      </div>
+    </div>
+    <div class="ai-off" id="logConnect" hidden>
+      <p>記録を残すには、設定で GAS を接続してください。ディクテーションの結果は、接続するまでこの端末に保存しておき、接続すると送ります。</p>
+      <div><button type="button" class="mini" id="logConnectOpen">設定を開く</button></div>
+    </div>
+    <p class="fine" id="logStatus" aria-live="polite"></p>
+    <div class="panel" id="logBody" hidden>
+      <div class="tiles">
+        <div class="tile"><span class="tile-label">今日</span><span class="tile-num" id="stToday">0</span><span class="tile-unit">件</span></div>
+        <div class="tile"><span class="tile-label">直近7日</span><span class="tile-num" id="stWeek">0</span><span class="tile-unit">件</span></div>
+        <div class="tile"><span class="tile-label">連続</span><span class="tile-num" id="stStreak">0</span><span class="tile-unit">日</span></div>
+      </div>
+      <div class="avgs">
+        <div class="avg"><span class="tile-label">書き直しの平均</span><span class="avg-num" id="avWrite">—</span><span class="fine">直近7日 · 満点に対して</span></div>
+        <div class="avg"><span class="tile-label">1回目の平均</span><span class="avg-num" id="avFirst">—</span><span class="fine">直近7日 · 満点に対して</span></div>
+        <div class="avg"><span class="tile-label">書き取りの平均</span><span class="avg-num" id="avDict">—</span><span class="fine" id="avDictN">直近7日</span></div>
+      </div>
+      <div class="recent">
+        <h3>最近書いたもの</h3>
+        <ol id="recentList"></ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 先生 ===== -->
+  <section class="panel" id="tab-teacher" role="tabpanel" aria-labelledby="tabbtn-teacher" hidden>
+    <div class="panel-head">
+      <div class="seg small" id="tSeg" role="group" aria-label="先生の画面">
+        <button type="button" data-t="assign" aria-pressed="true">配信</button>
+        <button type="button" data-t="rubric" aria-pressed="false">ルーブリック</button>
+        <button type="button" data-t="lib" aria-pressed="false">お題</button>
+        <button type="button" data-t="roster" aria-pressed="false">生徒</button>
+      </div>
+      <div class="actions">
+        <a class="mini" id="tSheet" href="#" target="_blank" rel="noopener" hidden>スプレッドシートを開く</a>
+        <button type="button" class="mini" id="tRefresh">更新</button>
+      </div>
+    </div>
+    <p class="fine" id="tStatus" aria-live="polite"></p>
+
+    <div class="tsec" id="tsec-assign">
+      <div class="actions"><button type="button" class="btn primary" id="twNew">課題を配信する</button></div>
+      <form class="tform" id="twForm" novalidate hidden autocomplete="off">
+        <h3>課題を配信する</h3>
+        <div class="seg small" id="twKind" role="group" aria-label="課題の種類">
+          <button type="button" data-kind="英作文" aria-pressed="true">英作文</button>
+          <button type="button" data-kind="要約" aria-pressed="false">要約</button>
+          <button type="button" data-kind="感想" aria-pressed="false">感想・意見</button>
+          <button type="button" data-kind="ディクテーション" aria-pressed="false">ディクテーション</button>
+        </div>
+        <label class="fine" for="twLib" id="twLibLabel">ライブラリから選ぶ</label>
+        <select id="twLib" class="my-sel"></select>
+        <label class="fine" for="twTitle">タイトル</label>
+        <input type="text" id="twTitle" placeholder="例: Unit 7 意見文">
+        <div class="tpart" id="twPromptBox">
+          <label class="fine" for="twPrompt" id="twPromptLabel">お題・指示(英語のお題と日本語の指示を書けます)</label>
+          <textarea id="twPrompt" rows="4" class="plain" spellcheck="false"></textarea>
+        </div>
+        <div class="tpart" id="twTextBox">
+          <label class="fine" for="twText" id="twTextLabel">本文(段落のあいだに空行を入れます)</label>
+          <textarea id="twText" rows="7" spellcheck="false"></textarea>
+        </div>
+        <div class="field-row" id="twWordsBox">
+          <span class="fine">語数</span>
+          <input type="number" class="num-in" id="twMin" min="0" max="400" step="5" aria-label="最小の語数">
+          <span>〜</span>
+          <input type="number" class="num-in" id="twMax" min="0" max="400" step="5" aria-label="最大の語数">
+          <span class="fine">語(空欄なら指定なし)</span>
+        </div>
+        <div class="tpart" id="twRubricBox">
+          <label class="fine" for="twRubricSel">ルーブリック</label>
+          <select id="twRubricSel" class="my-sel"></select>
+          <textarea id="twRubric" rows="5" class="plain" spellcheck="false" aria-label="ルーブリック(この課題用に直せます)"></textarea>
+          <p class="fine" id="twRubricNote"></p>
+        </div>
+        <details id="twModelBox">
+          <summary class="fine">模範例を付ける(任意。生徒には書き直しの後に表示されます)</summary>
+          <textarea id="twModel" rows="4" spellcheck="false"></textarea>
+        </details>
+        <fieldset class="tfield">
+          <legend class="fine">配信先のクラス</legend>
+          <div class="checks" id="twClasses"></div>
+        </fieldset>
+        <label class="fine" for="twTarget" id="twTargetLabel">目標点</label>
+        <div class="field-row"><input type="number" id="twTarget" min="1" max="100" step="1"><span id="twTargetUnit"></span></div>
+        <p class="fine" id="twCount"></p>
+        <div class="actions">
+          <button type="submit" class="btn primary" id="twSubmit">配信する</button>
+          <button type="button" class="btn" id="twCancel">キャンセル</button>
+        </div>
+      </form>
+      <div class="tlist" id="twList"></div>
+    </div>
+
+    <div class="tsec" id="tsec-rubric" hidden>
+      <form class="tform" id="trForm" novalidate autocomplete="off">
+        <h3 id="trHead">ルーブリックを作る</h3>
+        <label class="fine" for="trName">名前</label>
+        <input type="text" id="trName" placeholder="例: 意見文(4観点・各5点)">
+        <label class="fine" for="trLines">観点(1行に1つ。「観点 | 配点 | 基準」の形。スプレッドシートから3列をコピーして貼り付けても入ります)</label>
+        <textarea id="trLines" rows="6" class="plain" spellcheck="false" placeholder="内容 | 5 | 問いに答え、理由を2つ以上挙げている&#10;構成 | 5 | 主張 → 理由 → まとめの流れがある&#10;語彙 | 5 | 内容に合った語句を使っている&#10;文法 | 5 | 文法の誤りが少ない"></textarea>
+        <p class="fine" id="trSum"></p>
+        <div class="actions">
+          <button type="submit" class="btn primary" id="trSave">保存する</button>
+          <button type="button" class="btn" id="trCancel" hidden>編集をやめる</button>
+        </div>
+      </form>
+      <div class="tlist" id="trList"></div>
+    </div>
+
+    <div class="tsec" id="tsec-lib" hidden>
+      <form class="tform" id="tlForm" novalidate autocomplete="off">
+        <h3>英作文のお題をライブラリに登録する</h3>
+        <label class="fine" for="tlSet">セット</label>
+        <input type="text" id="tlSet" list="setNames" placeholder="例: Unit 7">
+        <label class="fine" for="tlLines">1行に1題。「英語のお題 | 日本語の指示 | 模範例」の形で書きます(指示と模範例は省略できます)。指示に「80〜100語」と書くと、語数の目標になります。</label>
+        <textarea id="tlLines" rows="6" spellcheck="false" placeholder="Do you think high school students should have part-time jobs? | 賛成か反対か、理由を2つ挙げて80〜100語で書きなさい。 | I think high school students should ..."></textarea>
+        <p class="fine" id="tlCount"></p>
+        <div class="actions"><button type="submit" class="btn primary" id="tlSubmit">登録する</button></div>
+      </form>
+      <div class="tlist" id="tlList"></div>
+    </div>
+
+    <div class="tsec" id="tsec-roster" hidden>
+      <div class="tform">
+        <h3>生徒に配る参加リンク(WriteLoop)</h3>
+        <p class="fine">生徒はこのリンクを開き、クラスと名前を選ぶだけで始められます。同じ端末で SpeakLoop にログインしている生徒は、そのまま使えます。リンクを知っている人は誰でも参加できるので、クラスの外には配らないでください。</p>
+        <div class="join-row">
+          <label class="sr-only" for="joinUrl">参加リンク</label>
+          <input type="text" id="joinUrl" readonly>
+          <button type="button" class="btn" id="joinCopy">コピー</button>
+          <button type="button" class="btn" id="joinQrBtn" aria-expanded="false">QRコード</button>
+        </div>
+        <p class="fine" id="joinNote"></p>
+        <div class="qr" id="joinQr" hidden></div>
+      </div>
+      <form class="tform" id="tsForm" novalidate autocomplete="off">
+        <h3>生徒を追加する(SpeakLoop と共通の名簿)</h3>
+        <label class="fine" for="tsClass">クラス</label>
+        <input type="text" id="tsClass" list="classNames" placeholder="例: 2年A組">
+        <label class="fine" for="tsNames">名前(1行に1人。「12 山田太郎」のように、出席番号を先に書けます)</label>
+        <textarea id="tsNames" rows="5" class="plain" placeholder="1 青木 健&#10;2 石田 さくら&#10;3 上野 大輔"></textarea>
+        <div class="actions"><button type="submit" class="btn primary" id="tsSubmit">追加する</button></div>
+      </form>
+      <div class="tlist" id="tsList"></div>
+    </div>
+    <datalist id="setNames"></datalist>
+    <datalist id="classNames"></datalist>
+  </section>
+
+  <footer class="foot">
+    <p>英作文・要約・感想の添削は、あなたの GAS を通して Claude(Sonnet 5.5)が行います。1回目はヒントだけ、書き直した後に添削と模範例が届きます。</p>
+    <p>ディクテーションの読み上げと採点は、この端末のブラウザだけで行います。書いた英文と結果は、GAS を通してスプレッドシートに残ります。</p>
+    <p>英語を書く欄には、ほかから貼り付けることはできません(自分で書いた英文の切り取り・貼り付けはできます)。</p>
+  </footer>
+</div>
+<script>
+(() => {
+'use strict';
+
+/* ================= helpers ================= */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const mkStore = (prefix) => ({
+  get(k, d) { try { const v = localStorage.getItem(prefix + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(prefix + k, JSON.stringify(v)); } catch (e) { /* storage unavailable */ } },
+  del(k) { try { localStorage.removeItem(prefix + k); } catch (e) { /* ignore */ } },
+});
+// The connection, the person logged in and the voice settings are shared with SpeakLoop on the same site,
+// so a student who joined SpeakLoop on this device is already signed in here.
+const store = mkStore('speakloop:');
+const wst = mkStore('writeloop:');
+
+(function acceptJoinLink() {
+  try {
+    const q = new URLSearchParams(location.search);
+    const url = q.get('gas'), key = q.get('key');
+    if (!url || !key) return;
+    if (/^https:\/\/script\.google\.com\/.+\/exec\/?$/.test(url)) {
+      const prev = store.get('gas', {});
+      if (prev.url !== url || prev.token !== key) { store.del('who'); store.del('server'); }
+      store.set('gas', { url, token: key });
+    }
+    history.replaceState(null, '', location.pathname + location.hash);
+  } catch (e) { /* ignore */ }
+})();
+let who = store.get('who', null);
+if (!who || !((who.role === 'student' && who.sid) || (who.role === 'teacher' && who.session))) who = null;
+let server = Object.assign({ classMode: false }, store.get('server', {}));
+const whoKey = () => (!who ? 'p' : who.role === 'student' ? 's:' + who.sid : 't');
+/* Drafts, feedback and queued results are kept per person, so a shared school tablet never mixes students. */
+const ukey = (k) => (whoKey() === 'p' ? k : k + '@' + whoKey());
+
+const ICON = {
+  play: '<svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M7 5v14l12-7z" fill="currentColor"/></svg>',
+  stop: '<svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg>',
+};
+const KIND_LABEL = { '英作文': '英作文', '要約': '要約', '感想': '感想・意見', 'ディクテーション': 'ディクテーション' };
+
+/* ================= settings & today counter ================= */
+const settings = Object.assign({ rate: 0.9, voice: '' }, store.get('settings', {}));
+const saveSettings = () => store.set('settings', Object.assign(store.get('settings', {}), { rate: settings.rate, voice: settings.voice }));
+const todayKey = () => { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
+let today = wst.get(ukey('today'), { d: '', n: 0 });
+if (today.d !== todayKey()) today = { d: todayKey(), n: 0 };
+const renderToday = () => { $('#todayCount').textContent = today.n; };
+const bumpToday = () => { if (today.d !== todayKey()) today = { d: todayKey(), n: 0 }; today.n++; wst.set(ukey('today'), today); renderToday(); };
+renderToday();
+
+/* ================= text-to-speech ================= */
+const TTS = {
+  ok: typeof window.speechSynthesis !== 'undefined' && typeof window.SpeechSynthesisUtterance !== 'undefined',
+  voices: [],
+  load() {
+    if (!this.ok) return;
+    try { this.voices = speechSynthesis.getVoices().filter((v) => /^en([-_]|$)/i.test(v.lang)); } catch (e) { this.voices = []; }
+    renderVoiceSelect();
+  },
+  pick() {
+    if (settings.voice) { const v = this.voices.find((x) => x.voiceURI === settings.voice); if (v) return v; }
+    const us = this.voices.filter((v) => /en[-_]US/i.test(v.lang));
+    return us.find((v) => /natural|neural|google|samantha|aria|jenny|ava/i.test(v.name)) || us[0] || this.voices[0] || null;
+  },
+  seq: 0,
+  speak(text, rate) { this.seq++; return this._say(text, rate); },
+  /* Long texts are read one sentence at a time: some browsers cut a long utterance off part way. */
+  async speakSeq(list, rate, onIndex) {
+    const my = ++this.seq;
+    for (let i = 0; i < list.length; i++) {
+      if (my !== this.seq) break;
+      if (onIndex) onIndex(i);
+      await this._say(list[i], rate);
+    }
+    if (onIndex && my === this.seq) onIndex(-1);
+    return my === this.seq;
+  },
+  _say(text, rate) {
+    return new Promise((resolve) => {
+      if (!this.ok || !text) return resolve();
+      try {
+        speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'en-US';
+        u.rate = rate || settings.rate;
+        const v = this.pick();
+        if (v) u.voice = v;
+        let done = false;
+        const fin = () => { if (!done) { done = true; resolve(); } };
+        u.onend = fin; u.onerror = fin;
+        speechSynthesis.speak(u);
+        setTimeout(fin, 2500 + (text.length * 110) / u.rate);
+      } catch (e) { resolve(); }
+    });
+  },
+  stop() { this.seq++; if (this.ok) { try { speechSynthesis.cancel(); } catch (e) { /* ignore */ } } },
+};
+
+/* ================= text utilities ================= */
+function splitParas(text) {
+  const t = String(text || '').replace(/\r\n?/g, '\n').trim();
+  if (!t) return [];
+  const parts = /\n\s*\n/.test(t) ? t.split(/\n\s*\n/) : t.split('\n');
+  return parts.map((x) => x.replace(/\s+/g, ' ').trim()).filter(Boolean);
+}
+const ABBR_END = /^(?:mr|mrs|ms|dr|prof|sr|jr|st|mt|vs|etc|e\.g|i\.e|a\.m|p\.m|u\.s|u\.k|no|vol|fig|inc|ltd|co)\.$/i;
+function splitSentences(p) {
+  const words = String(p).split(/\s+/).filter(Boolean);
+  const out = [];
+  let cur = [];
+  words.forEach((w, i) => {
+    cur.push(w);
+    const next = words[i + 1];
+    const core = w.replace(/^["'“‘(\[]+/, '').replace(/["'”’)\]]+$/, '');
+    if (next && /[.!?]["'”’)\]]*$/.test(w) && /^["'“‘(\[]*[A-Z0-9]/.test(next) && !ABBR_END.test(core) && !/^[A-Z]\.$/.test(core)) {
+      out.push(cur.join(' '));
+      cur = [];
+    }
+  });
+  if (cur.length) out.push(cur.join(' '));
+  return out;
+}
+function hashText(t) {
+  let h = 5381;
+  for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+const wordCount = (t) => (String(t || '').match(/[A-Za-z0-9]+(?:['’][A-Za-z]+)*/g) || []).length;
+/** 「80〜100語」「60-80 words」→ {min, max}。「50語」→ {min:50, max:0} */
+function parseWords(v) {
+  const s = String(v || '').replace(/[０-９]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 0xFEE0));
+  let m = s.match(/(\d{1,3})\s*(?:語|words?)?\s*[-〜~～–—－から]+\s*(\d{1,3})/);
+  if (m && Number(m[2]) >= Number(m[1])) return { min: Number(m[1]), max: Number(m[2]) };
+  m = s.match(/(\d{1,3})\s*(?:語|words?)/);
+  return m && Number(m[1]) > 0 ? { min: Number(m[1]), max: 0 } : null;
+}
+const wordsText = (w) => (!w ? '' : w.max ? w.min + '〜' + w.max + '語' : w.min + '語以上');
+const wordsArg = (w) => (!w ? '' : w.max ? w.min + '-' + w.max : String(w.min));
+/* ================= own words only: no pasting into the writing fields ================= */
+/**
+ * In the fields where students write English, pasting, dropping text and keyboard clipboard suggestions
+ * (one long insertion at once) are refused, so a machine translation cannot be pasted in.
+ * Moving their own words still works: text cut or copied from these fields can be pasted back.
+ */
+function guardOwnWords(isField, warn) {
+  const LONG = 30; // no single keystroke or word suggestion is this long
+  const prev = new WeakMap();
+  let own = '', ownUntil = 0;
+  const field = (t) => !!(t && t.nodeType === 1 && isField(t));
+  const clean = (t) => String(t || '').replace(/\r\n?/g, '\n');
+  const remember = (e) => {
+    const el = e.target;
+    if (field(el) && el.selectionStart != null) own = clean(el.value.slice(el.selectionStart, el.selectionEnd));
+  };
+  const refuse = (e) => { e.preventDefault(); warn(e.target); };
+  document.addEventListener('copy', remember, true);
+  document.addEventListener('cut', remember, true);
+  document.addEventListener('paste', (e) => {
+    if (!field(e.target)) return;
+    const t = clean(e.clipboardData ? e.clipboardData.getData('text/plain') : '');
+    if (own && t === own) { ownUntil = Date.now() + 1000; return; }
+    refuse(e);
+  }, true);
+  document.addEventListener('drop', (e) => { if (field(e.target)) refuse(e); }, true);
+  document.addEventListener('beforeinput', (e) => {
+    if (!field(e.target)) return;
+    const it = e.inputType || '';
+    if (/^insertFrom(Paste|Drop|Yank)/.test(it)) { if (Date.now() > ownUntil) refuse(e); }
+    else if (it === 'insertText' && !e.isComposing && e.data && e.data.length > LONG) refuse(e);
+  }, true);
+  document.addEventListener('focusin', (e) => { if (field(e.target)) prev.set(e.target, e.target.value); }, true);
+  // Fallback for keyboards whose insertions cannot be cancelled: undo any single jump of many characters.
+  document.addEventListener('input', (e) => {
+    const el = e.target;
+    if (!field(el)) return;
+    const before = prev.get(el);
+    if (!e.isComposing && before != null && el.value.length - before.length > LONG && !/^history/.test(e.inputType || '') && Date.now() > ownUntil) {
+      el.value = before;
+      warn(el);
+      return;
+    }
+    prev.set(el, el.value);
+  }, true);
+}
+function warnPaste(el) {
+  const box = el.closest('.editor, .card');
+  const m = box && box.querySelector('.flow-msg');
+  if (!m) return;
+  m.textContent = '貼り付けはできません。自分の力で英語を書きましょう(自分で書いた英文の切り取り・貼り付けはできます)。';
+  clearTimeout(warnPaste.t);
+  warnPaste.t = setTimeout(() => { if (m.isConnected && m.textContent.startsWith('貼り付けは')) m.textContent = ''; }, 6000);
+}
+guardOwnWords((el) => el.matches('.wtext, #dcInput'), warnPaste);
+
+function fmtDay(iso) { const d = iso ? new Date(iso) : null; return d && !isNaN(d) ? (d.getMonth() + 1) + '/' + d.getDate() : ''; }
+function fmtWhen(iso) {
+  const d = iso ? new Date(iso) : null;
+  if (!d || isNaN(d)) return '';
+  return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+const pctBand = (p) => (p >= 85 ? 'good' : p >= 60 ? 'warn' : 'miss');
+const ratioBand = (s, max) => (max ? pctBand((s / max) * 100) : 'warn');
+
+/* ================= GAS connection ================= */
+const conn = Object.assign({ url: '', token: '' }, store.get('gas', {}));
+const AI = { mode: conn.url && conn.token ? 'gas' : 'none', note: '', sheetUrl: store.get('sheetUrl', '') };
+const aiUsable = () => AI.mode === 'gas';
+const idParams = () => (who && who.role === 'teacher' ? { session: who.session } : who && who.role === 'student' ? { sid: who.sid } : {});
+async function gasCall(action, payload, signal) {
+  if (!conn.url || !conn.token) throw { code: 'no_ai' };
+  let res, data;
+  try {
+    // A plain-text body keeps this a "simple" request, so the browser skips the CORS preflight that GAS cannot answer.
+    res = await fetch(conn.url, { method: 'POST', body: JSON.stringify(Object.assign({ action, token: conn.token }, idParams(), payload || {})), redirect: 'follow', signal });
+  } catch (e) {
+    if (e && e.name === 'AbortError') throw { code: 'cancelled' };
+    throw { code: 'network' };
+  }
+  try { data = await res.json(); } catch (e) { throw { code: 'bad_response' }; }
+  if (!data || data.ok !== true) throw { code: (data && data.code) || 'upstream_error' };
+  return data;
+}
+
+function errText(e) {
+  switch (e && e.code) {
+    case 'no_ai': return 'まだ GAS に接続していません。設定で GAS の URL と合言葉を入れると、添削と記録が使えます。';
+    case 'network': return 'GAS に接続できませんでした。ネットワークを確認して、もう一度試してください。';
+    case 'bad_response': return AI.mode === 'gas'
+      ? 'GAS が混み合っているか、一時的に応答しませんでした。少し待ってから、もう一度試してください。'
+      : 'GAS から正しい返事が来ませんでした。URL が「/exec」で終わっているか、デプロイの「アクセスできるユーザー」が「全員」になっているか確認してください。';
+    case 'server_error': return 'GAS でエラーが起きました。少し待ってから、もう一度試してください。続くときは先生に知らせてください。';
+    case 'bad_request': return 'GAS がこの操作を受け付けませんでした。GAS の Code.gs が WriteLoop に対応した新しい版か確認してください(先生向け)。';
+    case 'bad_token': return '合言葉が違います。GAS の setup を実行したときに表示された APP_TOKEN を入れてください。';
+    case 'no_token_set': return 'GAS に合言葉がまだありません。GAS のエディタで関数「setup」を一度実行してください。';
+    case 'no_key': return 'GAS に Anthropic の API キーが設定されていません。スクリプト プロパティに ANTHROPIC_API_KEY を追加してください。';
+    case 'auth': return 'GAS に保存した API キーが受け付けられませんでした。ANTHROPIC_API_KEY の値を確認してください。';
+    case 'rate_limited': return 'AI へのリクエストが集中しています。少し時間をおいてから、もう一度送ってください。';
+    case 'daily_limit': return '今日の AI 利用回数の上限に達しました。上限は GAS のスクリプト プロパティ DAILY_LIMIT で変えられます。';
+    case 'student_limit': return '今日の AI の利用回数の上限に達しました(SpeakLoop と合わせた回数です)。明日また使えます。ディクテーションは、このまま使えます。';
+    case 'too_long': return '英文が長すぎます(4000字まで)。短くしてから提出してください。';
+    case 'too_short': return '3語以上書いてから提出してください。';
+    case 'invalid_json': case 'empty_completion': return 'AI の返事をうまく読み取れませんでした。もう一度提出してください。';
+    case 'upstream_error': return 'AI のサービスでエラーが起きました。少し待ってから、もう一度試してください。';
+    case 'login_required': return 'クラスと名前を選んでから練習してください。';
+    case 'unknown_student': return 'あなたの名前が名簿に見つかりません。先生に確認して、名前を選び直してください。';
+    case 'session_expired': return '先生のログインの有効期限が切れました。もう一度ログインしてください。';
+    case 'teacher_only': return 'この操作は先生だけができます。';
+    case 'bad_password': return '先生用パスワードが違います。';
+    case 'too_many_attempts': return 'パスワードを続けて間違えたため、10分ほどログインできません。';
+    case 'no_teacher_password': return 'GAS に先生用パスワードがまだありません。GAS のエディタで関数「setup」を実行してください。';
+    case 'bad_rubric': return 'ルーブリックの観点が読み取れません。1行に1つ、「観点 | 配点 | 基準」の形で書いてください(配点は数字)。';
+    case 'not_found': return '見つかりませんでした。課題が終了したか、削除された可能性があります。「更新」を押してください。';
+    default: return 'GAS からの返事を受け取れませんでした。もう一度試してください。';
+  }
+}
+function handleAIError(e) {
+  const c = e && e.code;
+  if (c === 'login_required' || c === 'unknown_student' || c === 'session_expired') { identityInvalid(c); return; }
+  if (c === 'bad_token' || c === 'no_token_set') { AI.mode = 'none'; AI.note = c; updateAIUI(); }
+  else if (c === 'no_key' || c === 'auth') { AI.note = c; updateAIUI(); }
+}
+
+function updateAIUI() {
+  const pill = $('#aiPill'), pillText = $('#aiPillText'), status = $('#aiStatus');
+  $('#gasClear').hidden = !conn.url;
+  $('#gasUrl').value = $('#gasUrl').value || conn.url;
+  $('#gasToken').placeholder = conn.token ? '保存済み(変えるときだけ入力)' : '合言葉';
+  [$('#sheetLinkSettings'), $('#sheetLink'), $('#tSheet')].forEach((a) => {
+    a.hidden = !(aiUsable() && AI.sheetUrl && !(who && who.role === 'student'));
+    if (AI.sheetUrl) a.href = AI.sheetUrl;
+  });
+  status.className = 'status-line';
+  if (AI.mode === 'gas') {
+    pill.dataset.state = AI.note ? 'warn' : 'on';
+    pillText.textContent = AI.note ? 'GAS 要確認' : 'GAS 接続中';
+    if (AI.note === 'no_key' || AI.note === 'auth') { status.classList.add('bad'); status.textContent = errText({ code: AI.note }) + 'ディクテーションと記録は使えます。'; }
+    else { status.classList.add('ok'); status.textContent = '接続しています。英作文・要約・感想の添削(Claude Sonnet 5.5)と、スプレッドシートへの記録が使えます。'; }
+  } else {
+    pill.dataset.state = AI.note ? 'warn' : 'off';
+    pillText.textContent = '未接続';
+    if (AI.note) { status.classList.add('bad'); status.textContent = errText({ code: AI.note }); }
+    else status.textContent = 'まだ接続していません。SpeakLoop と同じ GAS の URL と合言葉を入れてください。接続しなくても、ディクテーション(標準の英文)は使えます。';
+  }
+  renderWho();
+  $('#logConnect').hidden = aiUsable();
+  esFlow.refreshAvailability();
+  rdFlow.refreshAvailability();
+  if (aiUsable() && !lib.loaded && !lib.loading && ['essay', 'read', 'dict', 'teacher'].includes(currentTab)) loadLibrary();
+  if (currentTab === 'log') loadStats();
+}
+
+/* ================= settings panel ================= */
+function renderVoiceSelect() {
+  const sel = $('#voiceSelect');
+  sel.innerHTML = '<option value="">自動で選ぶ</option>' + TTS.voices.map((v) => '<option value="' + esc(v.voiceURI) + '">' + esc(v.name) + ' (' + esc(v.lang) + ')</option>').join('');
+  sel.value = TTS.voices.some((v) => v.voiceURI === settings.voice) ? settings.voice : '';
+  $('#voiceNote').textContent = !TTS.ok ? 'このブラウザは読み上げに対応していません' : (TTS.voices.length ? '' : '英語の声が見つかりません');
+}
+if (TTS.ok) {
+  TTS.load();
+  try { speechSynthesis.onvoiceschanged = () => TTS.load(); } catch (e) { /* ignore */ }
+} else renderVoiceSelect();
+function renderRate() {
+  $('#rateInput').value = settings.rate;
+  $('#rateOut').textContent = Number(settings.rate).toFixed(2) + 'x';
+  $$('.rate-chips button').forEach((b) => b.setAttribute('aria-pressed', String(Math.abs(Number(b.dataset.rate) - settings.rate) < 0.01)));
+}
+$('#rateInput').addEventListener('input', (e) => { settings.rate = Number(e.target.value); saveSettings(); renderRate(); });
+$$('.rate-chips button').forEach((b) => b.addEventListener('click', () => { settings.rate = Number(b.dataset.rate); saveSettings(); renderRate(); }));
+renderRate();
+$('#voiceSelect').addEventListener('change', (e) => { settings.voice = e.target.value; saveSettings(); });
+$('#voiceTest').addEventListener('click', () => TTS.speak("Let's write in English together."));
+
+function toggleSettings(open) {
+  const s = $('#settings');
+  const next = typeof open === 'boolean' ? open : s.hidden;
+  s.hidden = !next;
+  $('#settingsBtn').setAttribute('aria-expanded', String(next));
+  $('#settingsBtn').textContent = next ? '設定を閉じる' : '設定';
+  if (next) s.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+$('#settingsBtn').addEventListener('click', () => toggleSettings());
+$('#aiPill').addEventListener('click', () => toggleSettings(true));
+$('#logConnectOpen').addEventListener('click', () => toggleSettings(true));
+
+$('#gasForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const status = $('#aiStatus');
+  const url = $('#gasUrl').value.trim();
+  const token = $('#gasToken').value.trim() || conn.token;
+  if (!/^https:\/\/script\.google\.com\/.+\/exec\/?$/.test(url)) {
+    status.className = 'status-line bad';
+    status.textContent = 'GAS の URL は「https://script.google.com/macros/s/…/exec」の形です。デプロイ画面の「ウェブアプリ」の URL をコピーしてください。';
+    return;
+  }
+  if (!token) { status.className = 'status-line bad'; status.textContent = '合言葉を入力してください。'; return; }
+  const prev = { url: conn.url, token: conn.token, mode: AI.mode };
+  conn.url = url; conn.token = token;
+  status.className = 'status-line'; status.textContent = '接続を確認しています…';
+  $('#gasSave').disabled = true;
+  try {
+    const r = await gasCall('ping', {});
+    const changed = prev.url !== url || prev.token !== token;
+    store.set('gas', conn);
+    if (changed && who) { store.del('who'); store.del('server'); location.reload(); return; }
+    AI.mode = 'gas'; AI.note = r.hasKey ? '' : 'no_key';
+    if (r.sheetUrl) { AI.sheetUrl = r.sheetUrl; store.set('sheetUrl', r.sheetUrl); }
+    $('#gasToken').value = '';
+    lib.loaded = false;
+    updateAIUI();
+    refreshServer();
+    flushDict();
+  } catch (err) {
+    conn.url = prev.url; conn.token = prev.token; AI.mode = prev.mode;
+    updateAIUI();
+    status.className = 'status-line bad';
+    status.textContent = errText(err);
+  } finally {
+    $('#gasSave').disabled = false;
+  }
+});
+$('#gasClear').addEventListener('click', () => {
+  store.del('gas'); store.del('sheetUrl'); store.del('who'); store.del('server');
+  location.reload();
+});
+
+/* ================= tabs ================= */
+const TABS = ['assign', 'essay', 'read', 'dict', 'log', 'teacher'];
+const tabVisible = (t) => !$('#tabbtn-' + t).hidden;
+const defaultTab = () => (who && who.role === 'student' ? 'assign' : who && who.role === 'teacher' ? 'teacher' : 'essay');
+var currentTab = 'essay'; // var: read by updateAIUI, which can run before this line on boot
+function showTab(name, fromHash) {
+  if (!TABS.includes(name) || !tabVisible(name)) name = defaultTab();
+  if (!tabVisible(name)) name = 'essay';
+  currentTab = name;
+  TTS.stop();
+  $$('.tabs [role="tab"]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
+  TABS.forEach((t) => { $('#tab-' + t).hidden = t !== name; });
+  wst.set(ukey('tab'), name);
+  if (!fromHash) history.replaceState(null, '', '#' + name);
+  if (['essay', 'read', 'dict', 'teacher'].includes(name) && aiUsable() && !lib.loaded) loadLibrary();
+  if (name === 'log') loadStats();
+  if (name === 'assign') loadAssignments(true);
+  if (name === 'teacher') loadOverview();
+}
+$$('.tabs [role="tab"]').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
+window.addEventListener('hashchange', () => showTab(location.hash.slice(1), true));
+
+/* ================= library (the 練習文 and ルーブリック sheets) ================= */
+const BUILTIN_RUBRICS = {
+  '英作文': { name: '英作文(4観点・各4点)', criteria: [
+    { name: '内容', points: 4, desc: '問いに正しく答え、理由や具体例で考えを支えている' },
+    { name: '構成', points: 4, desc: '主張 → 理由 → まとめの流れがあり、つなぎの言葉(First, Also, For example など)を適切に使っている' },
+    { name: '語彙', points: 4, desc: '内容に合った語句を使い、つづりの誤りが少ない' },
+    { name: '文法', points: 4, desc: '文法の誤りが少なく、意味が正しく伝わる' }] },
+  '要約': { name: '要約(3観点・各5点)', criteria: [
+    { name: '要点', points: 5, desc: '本文の大事な点をもれなく含め、細かい例は省いている' },
+    { name: '言い換え', points: 5, desc: '本文をそのまま写さず、自分の言葉でまとめている' },
+    { name: '正確さ', points: 5, desc: '文法・語彙の誤りが少なく、意味が正しく伝わる' }] },
+  '感想': { name: '感想・意見(3観点・各5点)', criteria: [
+    { name: '内容', points: 5, desc: '本文の内容にふれたうえで、自分の考えと理由を書いている' },
+    { name: '構成', points: 5, desc: '考え → 理由 → まとめの順で、読み手に伝わりやすい' },
+    { name: '正確さ', points: 5, desc: '文法・語彙の誤りが少なく、意味が正しく伝わる' }] },
+};
+const DEFAULT_TASK = {
+  '要約': 'Summarize the main points of the passage in your own words.\n本文の要点を、自分の言葉で英語にまとめましょう。',
+  '感想': 'What do you think about the passage? Write your opinion and give a reason.\n本文を読んで考えたことを、理由をつけて英語で書きましょう。',
+};
+const lib = { sets: wst.get('libSets', []), rubrics: wst.get('rubrics', []), defaults: wst.get('defaults', null), loaded: false, loading: false, msg: '' };
+if (!Array.isArray(lib.sets)) lib.sets = [];
+const rubricFor = (kind) => (lib.defaults && lib.defaults[kind]) || BUILTIN_RUBRICS[kind];
+async function loadLibrary(force) {
+  if (!aiUsable() || lib.loading || (lib.loaded && !force)) return;
+  lib.loading = true;
+  lib.msg = 'ライブラリを読み込んでいます…';
+  renderSources();
+  try {
+    const r = await gasCall('sentences', { app: 'write' });
+    lib.sets = Array.isArray(r.sets) ? r.sets : [];
+    if (Array.isArray(r.rubrics)) lib.rubrics = r.rubrics;
+    if (r.defaults) lib.defaults = r.defaults;
+    lib.loaded = true;
+    lib.msg = '';
+    wst.set('libSets', lib.sets); wst.set('rubrics', lib.rubrics); wst.set('defaults', lib.defaults);
+  } catch (e) {
+    handleAIError(e);
+    lib.msg = 'ライブラリを読み込めませんでした。' + errText(e);
+  } finally {
+    lib.loading = false;
+  }
+  renderSources();
+  if (currentTab === 'teacher' && tch.data) renderTeacher();
+}
+function renderSources() {
+  renderEssaySelect(); renderEssay();
+  renderReadSelect(); renderRead();
+  renderDictSelect(); renderDict();
+}
+
+/* ================= feedback rendering (shared by students and the teacher viewer) ================= */
+function rubricHTML(criteria, open) {
+  if (!criteria || !criteria.length) return '';
+  const total = criteria.reduce((s, c) => s + c.points, 0);
+  return '<details class="rubric-box"' + (open ? ' open' : '') + '><summary>評価の観点(' + criteria.length + '観点・満点 ' + total + '点)</summary>' +
+    '<table class="rtable"><thead><tr><th>観点</th><th>配点</th><th>基準</th></tr></thead><tbody>' +
+    criteria.map((c) => '<tr><td><b>' + esc(c.name) + '</b></td><td class="pts">' + c.points + '</td><td>' + esc(c.desc) + '</td></tr>').join('') +
+    '</tbody></table></details>';
+}
+/** One row per criterion; with prev (the first draft's scores) a tick on the bar marks where the first draft was. */
+function critHTML(scores, prev) {
+  return '<ul class="crit">' + scores.map((s, i) => {
+    const p = prev && prev[i];
+    const w = s.max ? (s.score / s.max) * 100 : 0;
+    return '<li><span class="c-name">' + esc(s.name) + '</span>' +
+      '<span class="c-bar"><i style="width:' + w + '%"></i>' +
+      (p && s.max ? '<b class="tick" style="left:calc(' + (p.score / s.max) * 100 + '% - 1px)" title="1回目 ' + p.score + '"></b>' : '') + '</span>' +
+      '<span class="c-val">' + (p ? '<span class="from">' + p.score + ' → </span>' : '') + s.score + ' / ' + s.max + '</span>' +
+      (s.comment ? '<p class="c-note">' + esc(s.comment) + '</p>' : '') + '</li>';
+  }).join('') + '</ul>';
+}
+/** The draft with each hinted phrase highlighted and numbered. Quotes the AI could not place are listed without a mark. */
+function markedDraftHTML(text, issues) {
+  const spans = [];
+  (issues || []).forEach((x, i) => {
+    const q = x.quote || '';
+    if (!q) return;
+    const overlaps = (k) => spans.some((s) => k < s.end && k + q.length > s.start);
+    let k = -1, from = 0;
+    for (;;) { k = text.indexOf(q, from); if (k < 0 || !overlaps(k)) break; from = k + 1; }
+    if (k < 0) { k = text.toLowerCase().indexOf(q.toLowerCase()); if (k >= 0 && overlaps(k)) k = -1; }
+    if (k >= 0) spans.push({ start: k, end: k + q.length, n: i + 1 });
+  });
+  spans.sort((a, b) => a.start - b.start);
+  let html = '', at = 0;
+  spans.forEach((s) => {
+    html += esc(text.slice(at, s.start)) + '<mark class="iss">' + esc(text.slice(s.start, s.end)) + '</mark><span class="iss-n">' + s.n + '</span>';
+    at = s.end;
+  });
+  return '<p class="draft">' + html + esc(text.slice(at)) + '</p>';
+}
+function issuesHTML(issues) {
+  if (!issues || !issues.length) return '<p class="fine">言葉づかいの大きな問題は見つかりませんでした。内容をもっと良くできないか考えて書き直しましょう。</p>';
+  return '<ol class="issues">' + issues.map((x, i) => '<li><span class="iss-n">' + (i + 1) + '</span>' +
+    '<span class="q"><span class="tag">' + esc(x.type || '') + '</span>' + (x.quote ? '「' + esc(x.quote) + '」' : '<span class="fine">(全体について)</span>') + '</span>' +
+    '<span class="h">' + esc(x.hint) + '</span></li>').join('') + '</ol>';
+}
+/** Word-level diff: what the corrector removed (red, struck) and added (green). Line breaks are kept as tokens. */
+function wordDiffHTML(a, b) {
+  const tok = (t) => String(t || '').replace(/\r\n?/g, '\n').match(/\n+|[^\s]+/g) || [];
+  const A = tok(a), B = tok(b), n = A.length, m = B.length;
+  if (n * m > 400000) return '<p class="draft">' + esc(b) + '</p>';
+  const dp = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) dp[i][j] = A[i] === B[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+  const ops = [];
+  let i = 0, j = 0;
+  while (i < n || j < m) {
+    if (i < n && j < m && A[i] === B[j]) { ops.push(['=', A[i]]); i++; j++; }
+    else if (i < n && (j === m || dp[i + 1][j] >= dp[i][j + 1])) { ops.push(['-', A[i]]); i++; } // removed words first, then what replaces them
+    else { ops.push(['+', B[j]]); j++; }
+  }
+  // group runs so "- - + +" reads as one replacement
+  const out = [];
+  ops.forEach(([t, s]) => { const last = out[out.length - 1]; if (last && last[0] === t && s[0] !== '\n' && last[1].slice(-1) !== '\n') last[1] += ' ' + s; else out.push([t, s]); });
+  let html = '';
+  out.forEach(([t, s], k) => {
+    if (/^\n+$/.test(s)) { if (t !== '-') html += s.length > 1 ? '\n\n' : '\n'; return; }
+    const sp = k && !/\n$/.test(html) ? ' ' : '';
+    html += sp + (t === '=' ? esc(s) : t === '-' ? '<del>' + esc(s) + '</del>' : '<ins>' + esc(s) + '</ins>');
+  });
+  return '<p class="draft wdiff">' + html + '</p>';
+}
+function fixesHTML(list) {
+  if (!list || !list.length) return '';
+  return '<ol class="fixes">' + list.map((c) => '<li><span class="ft">' + (c.from ? '<s>' + esc(c.from) + '</s> → ' : '') + '<b>' + esc(c.to) + '</b></span>' +
+    (c.why ? '<span class="fw">' + esc(c.why) + '</span>' : '') + '</li>').join('') + '</ol>';
+}
+const say = (label, text) => (text ? '<p class="say"><b>' + esc(label) + '</b><span>' + esc(text) + '</span></p>' : '');
+function scoreHTML(fb, prevFb) {
+  const band = ratioBand(fb.total, fb.max);
+  const d = prevFb ? fb.total - prevFb.total : null;
+  return '<div class="score-row"><span class="score" data-s="' + band + '">' + (prevFb ? '<span class="from">' + prevFb.total + ' →</span>' : '') + fb.total + '<small>/ ' + fb.max + '点</small></span>' +
+    (d != null ? '<span class="delta' + (d <= 0 ? ' zero' : '') + '">' + (d > 0 ? '+' + d : d === 0 ? '±0' : d) + '</span>' : '') + '</div>';
+}
+/** The first-draft feedback (scores, praise, focus, the marked draft and the numbered hints). */
+function hintViewHTML(draft, fb, opts) {
+  opts = opts || {};
+  return '<section class="result">' +
+    '<span class="eyebrow">' + (opts.label || '1回目の評価') + '</span>' + scoreHTML(fb) + critHTML(fb.scores) +
+    say('よかった点', fb.good) + say('書き直しのポイント', fb.overall) + '</section>' +
+    '<section class="card"><h4>' + (opts.draftLabel || 'あなたの英文(番号の所を見直しましょう)') + '</h4>' + markedDraftHTML(draft, fb.issues) + issuesHTML(fb.issues) + '</section>';
+}
+/** The final feedback after the rewrite: scores before/after, the corrected text as a diff, the model answer. */
+function doneViewHTML(st, opts) {
+  opts = opts || {};
+  const fb = st.fb2, f1 = st.fb1;
+  const reached = opts.target ? fb.total >= opts.target : null;
+  return '<section class="result">' +
+    '<span class="eyebrow">書き直しの評価</span>' + scoreHTML(fb, f1) +
+    (reached != null ? '<p class="verdict">' + (reached ? '<span class="ok-text">目標の ' + opts.target + '点に届きました。</span>' : '目標は ' + opts.target + '点です。もう一度書いて挑戦できます。') + '</p>' : '') +
+    critHTML(fb.scores, f1 && f1.scores) + say('書き直して良くなった点', fb.improved) + '</section>' +
+    '<section class="card"><div class="card-head"><h4>添削</h4><div class="legend"><span><del>消す</del></span><span><ins>直す・足す</ins></span></div></div>' +
+    wordDiffHTML(st.revised, fb.corrected) + fixesHTML(fb.corrections) + '</section>' +
+    (fb.model ? '<section class="card"><div class="card-head"><h4>' + (fb.modelBy === 'teacher' ? '先生の模範例' : '模範例(AI)') + '</h4>' +
+      (opts.noPlay ? '' : '<button type="button" class="mini" data-act="playModel">' + ICON.play + '読み上げ</button>') + '</div><p class="model">' + esc(fb.model) + '</p></section>' : '') +
+    (fb.next ? '<section class="result">' + say('次に書くときは', fb.next) + '</section>' : '') +
+    (opts.showFirst ? '<details class="card"><summary class="fine">1回目の英文とヒントを見る</summary>' + markedDraftHTML(st.draft, f1.issues) + issuesHTML(f1.issues) + '</details>' : '');
+}
+
+/* ================= the writing flow: draft → hints → rewrite → corrections + model ================= */
+/**
+ * One flow per tab. A "context" is the task being written (an assignment, a library prompt, a passage…);
+ * each context keeps its own state, so switching tasks never loses a draft.
+ */
+function WFlow(mount, hooks) {
+  let ctx = null, st = null, busy = false, msg = '', resuming = false;
+  const skey = () => ukey('flow:' + ctx.key);
+  const fresh = () => ({ phase: 'write', draft: '', did: '', fb1: null, revised: '', fb2: null, id2: '' });
+  const save = () => { if (ctx) wst.set(skey(), st); };
+  let saveT = 0;
+  const saveSoon = () => { clearTimeout(saveT); saveT = setTimeout(save, 400); };
+
+  function set(c) {
+    if (ctx && st) { clearTimeout(saveT); save(); } // keep the last keystrokes of the task we are leaving
+    ctx = c; msg = ''; busy = false;
+    if (!c) { mount.innerHTML = ''; return; }
+    st = Object.assign(fresh(), wst.get(skey(), {}));
+    render();
+    resume();
+  }
+  /** An assignment drafted on another device (or before clearing the browser) picks up where the student left off. */
+  async function resume() {
+    const me = ctx && ctx.me;
+    if (!me || !me.pending || st.phase !== 'write' || st.draft.trim() || resuming || !aiUsable()) return;
+    resuming = true;
+    const key = ctx.key;
+    try {
+      const r = await gasCall('wGet', { ids: [me.pending] });
+      const it = r.items && r.items[0];
+      if (it && ctx && ctx.key === key && st.phase === 'write' && !st.draft.trim()) {
+        st = Object.assign(fresh(), { phase: 'hint', draft: it.text, did: it.id, fb1: it.data, revised: it.text });
+        save(); render();
+      }
+    } catch (e) { /* stay on a blank draft */ } finally { resuming = false; }
+  }
+  async function showLast() {
+    const me = ctx && ctx.me;
+    const tries = (me && me.tries) || [];
+    let k = tries.length - 1;
+    while (k >= 0 && tries[k].stage !== 2) k--;
+    if (k < 1) return;
+    const s2 = tries[k], s1 = tries.slice(0, k).reverse().find((x) => x.stage === 1);
+    if (!s1) return;
+    msg = '前回の結果を読み込んでいます…'; render();
+    try {
+      const r = await gasCall('wGet', { ids: [s1.id, s2.id] });
+      const a = r.items.find((x) => x.id === s1.id), b = r.items.find((x) => x.id === s2.id);
+      if (!a || !b) throw { code: 'not_found' };
+      st = Object.assign(fresh(), { phase: 'done', draft: a.text, did: a.id, fb1: a.data, revised: b.text, fb2: b.data, id2: b.id });
+      msg = ''; save(); render();
+    } catch (e) { handleAIError(e); msg = errText(e); render(); }
+  }
+
+  const wcHTML = (n) => {
+    const w = ctx.words;
+    const s = !w ? '' : n < w.min ? 'warn' : w.max && n > w.max ? 'warn' : 'good';
+    return '<span class="wc"' + (s && n ? ' data-s="' + s + '"' : '') + '>' + n + ' 語' + (w ? '<small>目標 ' + wordsText(w) + '</small>' : '') + '</span>';
+  };
+  const stepsHTML = () => {
+    const at = { write: 0, hint: 1, done: 2 }[st.phase];
+    return '<div class="steps" aria-label="進み具合">' + ['1回目を書く', 'ヒントで書き直す', '添削と模範例'].map((t, i) =>
+      '<span' + (i === at ? ' aria-current="step"' : i < at ? ' class="done"' : '') + '>' + (i + 1) + '. ' + t + '</span>').join('') + '</div>';
+  };
+  const busyHTML = () => (busy ? '<div class="busy" role="status"><span class="typing" aria-hidden="true"><i></i><i></i><i></i></span><span>' +
+    (st.phase === 'write' ? 'AI が読んで、ヒントを考えています…(20〜40秒ほど)' : 'AI が添削と模範例を書いています…(30秒〜1分ほど)') + '</span></div>' : '');
+  const offHTML = () => (aiUsable() ? '' : '<div class="ai-off"><p>' + (AI.note ? errText({ code: AI.note }) : '添削を受けるには、設定で GAS に接続してください。書いた英文はこの端末に保存されます。') + '</p></div>');
+
+  function render() {
+    if (!ctx) { mount.innerHTML = ''; return; }
+    const me = ctx.me;
+    let html = stepsHTML();
+    if (st.phase === 'write') {
+      const prev = me && me.best != null && !st.draft.trim()
+        ? '<div class="prev-note"><p>提出済みです。最高 <b>' + me.best + ' / ' + (ctx.total || '') + '点</b>' + (ctx.target ? '(目標 ' + ctx.target + '点)' : '') + '。もう一度書くこともできます。</p>' +
+          '<button type="button" class="mini" data-act="last">前回の結果を見る</button></div>' : '';
+      html += prev + '<div class="editor"><div class="editor-head"><span class="eyebrow">1回目 · まず自分の力で書きましょう</span>' + wcHTML(wordCount(st.draft)) + '</div>' +
+        '<label class="sr-only" for="' + hooks.id + '-draft">英文</label>' +
+        '<textarea class="wtext" id="' + hooks.id + '-draft" data-role="draft" spellcheck="false" autocorrect="off" placeholder="ここに英語で書きます"' + (busy ? ' readonly' : '') + '>' + esc(st.draft) + '</textarea>' +
+        offHTML() + busyHTML() +
+        '<div class="actions"><button type="button" class="btn primary" data-act="submit1"' + (busy || !aiUsable() ? ' disabled' : '') + '>提出してヒントをもらう</button>' +
+        (st.draft ? '<button type="button" class="mini" data-act="clear">書いた英文を消す</button>' : '') + '</div>' +
+        '<p class="flow-msg" role="alert">' + esc(msg) + '</p></div>';
+    } else if (st.phase === 'hint') {
+      html += hintViewHTML(st.draft, st.fb1) +
+        '<div class="editor"><div class="editor-head"><span class="eyebrow">書き直し · ヒントを見ながら直しましょう</span>' + wcHTML(wordCount(st.revised)) + '</div>' +
+        '<label class="sr-only" for="' + hooks.id + '-rev">書き直した英文</label>' +
+        '<textarea class="wtext" id="' + hooks.id + '-rev" data-role="revised" spellcheck="false" autocorrect="off"' + (busy ? ' readonly' : '') + '>' + esc(st.revised) + '</textarea>' +
+        offHTML() + busyHTML() +
+        '<div class="actions"><button type="button" class="btn primary" data-act="submit2"' + (busy || !aiUsable() ? ' disabled' : '') + '>書き直して提出する</button>' +
+        '<button type="button" class="mini" data-act="restart"' + (busy ? ' disabled' : '') + '>1回目から書き直す</button></div>' +
+        '<p class="flow-msg" role="alert">' + esc(msg) + '</p></div>';
+    } else {
+      html += doneViewHTML(st, { target: ctx.target, showFirst: true }) +
+        '<div class="actions"><button type="button" class="btn" data-act="again">もう一度書く</button>' +
+        (hooks.onNext && hooks.hasNext && hooks.hasNext() ? '<button type="button" class="btn primary" data-act="next">次のお題へ</button>' : '') + '</div>' +
+        '<p class="flow-msg" role="alert">' + esc(msg) + '</p>';
+    }
+    mount.innerHTML = html;
+  }
+
+  async function submit(stage) {
+    if (busy || !ctx) return;
+    const text = (stage === 1 ? st.draft : st.revised).trim();
+    if (wordCount(text) < 3) { msg = errText({ code: 'too_short' }); render(); return; }
+    busy = true; msg = ''; render();
+    const key = ctx.key;
+    const payload = { stage, text };
+    if (ctx.aid) payload.aid = ctx.aid;
+    else Object.assign(payload, { kind: ctx.kind, prompt: ctx.prompt, passage: ctx.passage || '', words: wordsArg(ctx.words), title: ctx.title, model: ctx.model || '' });
+    if (stage === 2) payload.did = st.did;
+    try {
+      const r = await gasCall('wSubmit', payload);
+      if (!ctx || ctx.key !== key) return; // the student moved on; the result is still in the spreadsheet
+      if (stage === 1) st = Object.assign(fresh(), { phase: 'hint', draft: text, did: r.id, fb1: r.result, revised: text });
+      else Object.assign(st, { phase: 'done', revised: text, fb2: r.result, id2: r.id });
+      busy = false; save(); bumpToday(); render();
+      mount.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (hooks.onSubmitted) hooks.onSubmitted(ctx, stage, r);
+    } catch (e) {
+      busy = false;
+      handleAIError(e);
+      msg = errText(e) + (e.code === 'not_found' && stage === 2 ? '「1回目から書き直す」で、もう一度提出できます。' : '');
+      render();
+    }
+  }
+
+  mount.addEventListener('input', (e) => {
+    const role = e.target.dataset.role;
+    if (!role || !st) return;
+    st[role] = e.target.value;
+    saveSoon();
+    const wc = e.target.closest('.editor').querySelector('.wc');
+    if (wc) wc.outerHTML = wcHTML(wordCount(e.target.value));
+  });
+  mount.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-act]');
+    if (!b || !st) return;
+    const act = b.dataset.act;
+    if (act === 'submit1') submit(1);
+    else if (act === 'submit2') submit(2);
+    else if (act === 'clear') {
+      if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'もう一度押すと消します'; setTimeout(() => { if (b.isConnected) { b.dataset.armed = ''; b.textContent = '書いた英文を消す'; } }, 4000); return; }
+      st.draft = ''; save(); render();
+    } else if (act === 'restart') { st = Object.assign(fresh(), { draft: st.revised || st.draft }); msg = ''; save(); render(); }
+    else if (act === 'again') { st = fresh(); msg = ''; save(); render(); mount.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    else if (act === 'next' && hooks.onNext) hooks.onNext();
+    else if (act === 'last') showLast();
+    else if (act === 'playModel' && st.fb2 && st.fb2.model) {
+      if (b.dataset.playing === '1') { TTS.stop(); b.dataset.playing = ''; b.innerHTML = ICON.play + '読み上げ'; return; }
+      b.dataset.playing = '1'; b.innerHTML = ICON.stop + '止める';
+      TTS.speakSeq(splitParas(st.fb2.model).flatMap(splitSentences), settings.rate).then(() => { b.dataset.playing = ''; b.innerHTML = ICON.play + '読み上げ'; });
+    }
+  });
+  return {
+    set,
+    /** Same task, fresher details (e.g. the assignment list reloaded): keep the editor as it is while typing. */
+    update(c) {
+      const typing = mount.contains(document.activeElement) && document.activeElement.tagName === 'TEXTAREA';
+      ctx = c;
+      if (!busy && !typing) { render(); resume(); }
+    },
+    refreshAvailability() {
+      const typing = mount.contains(document.activeElement) && document.activeElement.tagName === 'TEXTAREA';
+      if (ctx && !busy && !typing) render();
+    },
+    get ctx() { return ctx; },
+  };
+}
+
+/* ================= standard content (works before a library exists) ================= */
+const STD_PROMPTS = [
+  { q: 'What is your favorite season? Why do you like it?', ja: '好きな季節と、その理由を書きましょう。', words: { min: 30, max: 50 } },
+  { q: 'Tell me about your best memory from junior high school.', ja: '中学校でいちばんの思い出を書きましょう。いつ・何をして・どう感じたかを入れます。', words: { min: 40, max: 60 } },
+  { q: 'Do you think high school students should have part-time jobs? Why or why not?', ja: '高校生のアルバイトに賛成か反対かを決め、理由を2つ挙げて書きましょう。', words: { min: 60, max: 80 } },
+  { q: 'Which do you prefer, studying alone or studying with friends? Why?', ja: 'ひとりで勉強するのと、友だちと勉強するのと、どちらが好きか。理由とともに書きましょう。', words: { min: 60, max: 80 } },
+  { q: 'Should students be allowed to use smartphones in class? Give your opinion with reasons.', ja: '授業中のスマートフォンの使用に賛成か反対か。理由を挙げて書きましょう。', words: { min: 80, max: 100 } },
+  { q: 'What is one thing you would like to change about your town? Explain why.', ja: '自分の町で変えたいことを1つ選び、その理由を説明しましょう。', words: { min: 80, max: 100 } },
+];
+const SAMPLE_PASSAGE = {
+  title: 'サンプル: A Better Morning',
+  paras: [
+    { en: 'Last spring, I decided to change the way I start my day. For years, I checked my phone as soon as I woke up. By the time I got out of bed, I already felt tired and stressed.', ja: '去年の春、私は一日の始め方を変えることにした。何年も、目が覚めるとすぐにスマホを見ていた。ベッドから出るころには、もう疲れてストレスを感じていた。' },
+    { en: 'Now I leave my phone in the kitchen at night. When my alarm goes off, I open the curtains and drink a glass of water. Then I take a short walk around the neighborhood before breakfast.', ja: '今は、夜はスマホを台所に置いておく。目覚ましが鳴ったら、カーテンを開けて水を1杯飲む。それから朝食の前に、近所を少し散歩する。' },
+    { en: 'It sounds simple, but the difference has been huge. I feel calmer in the morning, and I have more energy at work. If you want to try something new, start with one small change and keep it up for a month.', ja: '簡単に聞こえるが、違いはとても大きかった。朝は気持ちが落ち着き、仕事でも元気が出る。何か新しいことを始めたいなら、小さな変化を1つ選んで、1か月続けてみよう。' },
+  ],
+};
+const STD_DICT = {
+  '初級': [
+    { en: 'I usually walk to school with my sister.', ja: '私はふだん、姉(妹)と歩いて学校へ行きます。' },
+    { en: 'It was very hot yesterday, so we went to the beach.', ja: '昨日はとても暑かったので、私たちは海へ行きました。' },
+    { en: 'Can you tell me the way to the library?', ja: '図書館への行き方を教えてくれますか。' },
+    { en: 'My father likes cooking on weekends.', ja: '父は週末に料理をするのが好きです。' },
+    { en: 'We have a math test next Friday.', ja: '来週の金曜日に数学のテストがあります。' },
+    { en: 'She has been playing the piano for three years.', ja: '彼女は3年間ピアノを弾いています。' },
+  ],
+  '中級': [
+    { en: 'If it rains tomorrow, the soccer game will be canceled.', ja: '明日雨が降ったら、サッカーの試合は中止になります。' },
+    { en: 'The book I borrowed from the library was more interesting than I expected.', ja: '図書館で借りた本は、思っていたよりおもしろかった。' },
+    { en: 'Many tourists visit this town to see the old temples.', ja: '多くの観光客が、古いお寺を見にこの町を訪れます。' },
+    { en: "I didn't know what to say when my friend asked me for advice.", ja: '友だちに助言を求められたとき、何と言えばいいかわからなかった。' },
+    { en: 'It is important to get enough sleep before an exam.', ja: '試験の前に十分に眠ることは大切です。' },
+    { en: 'The students who joined the volunteer project cleaned the beach.', ja: 'ボランティア活動に参加した生徒たちが、浜辺を掃除しました。' },
+  ],
+  '上級': [
+    { en: 'Although the plan seemed difficult at first, everyone worked together to make it happen.', ja: '最初は難しそうに見えたが、みんなで協力して計画を実現した。' },
+    { en: 'Scientists believe that rising sea temperatures are affecting coral reefs around the world.', ja: '科学者たちは、海水温の上昇が世界中のサンゴ礁に影響を与えていると考えている。' },
+    { en: 'Had I known about the meeting earlier, I would have prepared better.', ja: '会議のことをもっと早く知っていたら、もっとよく準備したのに。' },
+    { en: 'The number of people working from home has increased dramatically in recent years.', ja: '在宅で働く人の数は、ここ数年で劇的に増えた。' },
+    { en: "What matters most is not how fast you learn, but whether you keep going.", ja: '最も大切なのは、どれだけ速く学ぶかではなく、続けるかどうかだ。' },
+    { en: 'The museum, which was built over a hundred years ago, attracts thousands of visitors every year.', ja: '100年以上前に建てられたその博物館は、毎年何千人もの人を集めている。' },
+  ],
+};
+
+/* ================= assignments (student) ================= */
+const wa = { list: wst.get(ukey('asg'), []), dbest: wst.get(ukey('asgDict'), {}), loading: false };
+if (!Array.isArray(wa.list)) wa.list = [];
+const dictSentences = (text) => splitParas(text).flatMap(splitSentences);
+function dictBestFor(a) {
+  const out = Object.assign({}, (a.me && a.me.sents) || {});
+  const loc = wa.dbest[a.id] || {};
+  Object.keys(loc).forEach((k) => { if (!(out[k] >= loc[k])) out[k] = loc[k]; });
+  return out;
+}
+function asgState(a) {
+  if (a.kind === 'ディクテーション') {
+    const n = dictSentences(a.text).length, b = dictBestFor(a);
+    const k = Array.from({ length: n }, (_, i) => b[i]).filter((v) => v >= a.target).length;
+    return { done: n > 0 && k === n, label: k === n ? '完了' : 'あと ' + (n - k) + ' 文', cls: k === n ? 'done' : '', n, k };
+  }
+  const me = a.me || {};
+  if (me.best != null && me.best >= a.target) return { done: true, label: '目標達成', cls: 'done' };
+  if (me.pending) return { done: false, label: '書き直し待ち', cls: '' };
+  if (me.best != null) return { done: false, label: '提出済み', cls: '' };
+  return { done: false, label: '未提出', cls: 'none' };
+}
+async function loadAssignments(quiet) {
+  if (!who || who.role !== 'student' || wa.loading || !aiUsable()) { renderAssignments(); return; }
+  wa.loading = true;
+  if (!quiet || !wa.list.length) $('#asgStatus').textContent = '課題を読み込んでいます…';
+  $('#asgRefresh').disabled = true;
+  try {
+    const r = await gasCall('wAssignments', {});
+    wa.list = Array.isArray(r.assignments) ? r.assignments : [];
+    wst.set(ukey('asg'), wa.list);
+    $('#asgStatus').textContent = '';
+  } catch (e) {
+    handleAIError(e);
+    $('#asgStatus').textContent = '課題を読み込めませんでした。' + errText(e) + (wa.list.length ? '前に読み込んだ課題を表示しています。' : '');
+  } finally {
+    wa.loading = false;
+    $('#asgRefresh').disabled = false;
+  }
+  renderAssignments();
+  renderSources();
+}
+function renderAssignments() {
+  const box = $('#asgList');
+  const open = wa.list.filter((a) => !asgState(a).done).length;
+  $('#asgBadge').hidden = !open;
+  $('#asgBadge').textContent = open;
+  if (!wa.list.length) {
+    box.innerHTML = '<div class="empty-card"><p><b>いまは配信された課題がありません。</b></p><p class="fine">先生が課題を配信すると、ここに表示されます。それまでは、ほかのタブで自由に練習できます。</p></div>';
+    return;
+  }
+  box.innerHTML = wa.list.map((a) => {
+    const s = asgState(a), me = a.me || {};
+    const isDict = a.kind === 'ディクテーション';
+    const meta = [fmtDay(a.date) ? fmtDay(a.date) + ' 配信' : '', isDict ? s.n + '文' : wordsText(a.words), isDict ? '目標: 各文 ' + a.target + '% 以上' : '満点 ' + a.total + '点 · 目標 ' + a.target + '点以上'].filter(Boolean).join(' · ');
+    const mine = isDict
+      ? '<div class="aprog"><span class="aprog-bar"><i style="width:' + (s.n ? Math.round((s.k / s.n) * 100) : 0) + '%"></i></span><span class="aprog-n">' + s.k + ' / ' + s.n + ' 文</span></div>'
+      : (me.best != null || me.pending ? '<p class="fine">' + [me.best != null ? '最高 ' + me.best + ' / ' + a.total + '点' : '', me.n ? '取り組み ' + me.n + '回' : '', me.pending ? 'ヒントを見て書き直しましょう' : ''].filter(Boolean).join(' · ') + '</p>' : '');
+    const btn = s.done ? 'もう一度取り組む' : isDict ? (s.k ? '続きを書き取る' : '書き取る') : me.pending ? '書き直す' : me.best != null ? 'もう一度書く' : '書く';
+    return '<article class="acard" data-done="' + s.done + '">' +
+      '<div class="acard-top"><div><span class="kbadge">' + esc(KIND_LABEL[a.kind] || a.kind) + '</span><h3>' + esc(a.title) + '</h3></div><span class="state ' + s.cls + '">' + s.label + '</span></div>' +
+      '<p class="fine">' + esc(meta) + '</p>' + mine +
+      '<div class="actions"><button type="button" class="btn' + (s.done ? '' : ' primary') + '" data-open="' + esc(a.id) + '">' + btn + '</button></div></article>';
+  }).join('');
+}
+$('#asgList').addEventListener('click', (e) => { const b = e.target.closest('[data-open]'); if (b) openAssignment(b.dataset.open); });
+$('#asgRefresh').addEventListener('click', () => loadAssignments(false));
+function openAssignment(id) {
+  const a = wa.list.find((x) => x.id === id);
+  if (!a) return;
+  if (a.kind === '英作文') { es.src = 'a:' + id; wst.set(ukey('esSrc'), es.src); showTab('essay'); renderEssaySelect(); renderEssay(); }
+  else if (a.kind === 'ディクテーション') { dc.src = 'a:' + id; dc.idx = firstOpenSentence(a); wst.set(ukey('dcSrc'), dc.src); showTab('dict'); renderDictSelect(); renderDict(); }
+  else { rd.src = 'a:' + id; wst.set(ukey('rdSrc'), rd.src); showTab('read'); renderReadSelect(); renderRead(); }
+  window.scrollTo({ top: 0 });
+}
+const asgById = (id) => wa.list.find((x) => x.id === id);
+function bannerHTML(a) {
+  const s = asgState(a);
+  const goal = a.kind === 'ディクテーション' ? '各文 ' + a.target + '% 以上 · 達成 ' + s.k + ' / ' + s.n + ' 文' : '満点 ' + a.total + '点のうち ' + a.target + '点以上' + (a.me && a.me.best != null ? ' · 最高 ' + a.me.best + '点' : '');
+  return '<span class="eyebrow">課題 · ' + esc(a.title) + '</span><p><b>目標: ' + esc(goal) + '</b>' + (s.done ? ' · <span class="ok-text">' + (a.kind === 'ディクテーション' ? '完了しました' : '目標達成') + '</span>' : '') + '</p>';
+}
+/** English lines go in the reading font, Japanese instructions underneath. */
+function taskTextHTML(text) {
+  const lines = String(text || '').split('\n').map((x) => x.trim()).filter(Boolean);
+  const jp = (l) => /[぀-ヿ㐀-鿿]/.test(l);
+  const en = lines.filter((l) => !jp(l)), ja = lines.filter(jp);
+  return (en.length ? '<p class="prompt">' + esc(en.join(' ')) + '</p>' : '') + (ja.length ? (en.length ? '<p class="task-ja">' : '<p class="prompt ja-q">') + esc(ja.join('\n')) + '</p>' : '');
+}
+function taskMetaHTML(ctx) {
+  const total = ctx.rubric.reduce((s, c) => s + c.points, 0);
+  const bits = [ctx.words ? '語数: ' + wordsText(ctx.words) : '', '満点 ' + total + '点', ctx.target ? '目標 ' + ctx.target + '点以上' : ''].filter(Boolean);
+  return '<div class="meta-line">' + bits.map((b) => '<span>' + esc(b) + '</span>').join('') + '</div>' + rubricHTML(ctx.rubric);
+}
+const writeHooks = (id, next) => ({
+  id,
+  onSubmitted: (ctx) => { if (ctx.aid) loadAssignments(true); stats.dirty = true; },
+  hasNext: () => !!next(true),
+  onNext: () => next(false),
+});
+
+/* ================= 英作文 ================= */
+const es = { src: wst.get(ukey('esSrc'), 'std:0'), custom: wst.get(ukey('esCustom'), { q: '', min: 50, max: 80 }) };
+const esFlow = WFlow($('#esFlow'), writeHooks('es', (peek) => {
+  const opts = $$('#esSel option').map((o) => o.value).filter((v) => v !== 'custom');
+  const k = opts.indexOf(es.src);
+  const nv = k >= 0 ? opts[k + 1] : null;
+  if (!nv || peek) return nv;
+  $('#esSel').value = nv; es.src = nv; wst.set(ukey('esSrc'), nv); renderEssay(); window.scrollTo({ top: 0, behavior: 'smooth' });
+  return nv;
+}));
+function renderEssaySelect() {
+  const sel = $('#esSel');
+  const asgs = wa.list.filter((a) => a.kind === '英作文');
+  let html = '';
+  if (asgs.length) html += '<optgroup label="課題">' + asgs.map((a) => '<option value="a:' + esc(a.id) + '">' + esc(a.title) + '</option>').join('') + '</optgroup>';
+  lib.sets.filter((s) => (s.write || []).length).forEach((s) => {
+    html += '<optgroup label="ライブラリ: ' + esc(s.name) + '">' + s.write.map((w) => '<option value="lib:' + esc(s.name) + '|' + hashText(w.q) + '">' + esc(w.q.length > 70 ? w.q.slice(0, 68) + '…' : w.q) + '</option>').join('') + '</optgroup>';
+  });
+  html += '<optgroup label="標準のお題">' + STD_PROMPTS.map((p, i) => '<option value="std:' + i + '">' + esc(p.q) + '</option>').join('') + '</optgroup>';
+  html += '<option value="custom">自分でお題を入れる</option>';
+  sel.innerHTML = html;
+  if (!$$('option', sel).some((o) => o.value === es.src)) es.src = asgs.length ? 'a:' + asgs[0].id : 'std:0';
+  sel.value = es.src;
+  const nLib = lib.sets.reduce((n, s) => n + ((s.write || []).length), 0);
+  $('#esNote').textContent = lib.msg || (!aiUsable() ? '標準のお題から選べます。ライブラリのお題と添削は、設定で GAS に接続すると使えます。'
+    : nLib ? 'ライブラリのお題 ' + nLib + '題と、標準のお題から選べます。' : '標準のお題から選べます。' + (who && who.role === 'student' ? '先生がお題を登録すると、ここに出ます。' : '「先生」タブの「お題」で、ライブラリにお題を登録できます。'));
+  $('#esReload').hidden = !aiUsable();
+  $('#esReload').disabled = lib.loading;
+}
+function essayCtx() {
+  const v = es.src;
+  if (v.startsWith('a:')) {
+    const a = asgById(v.slice(2));
+    if (!a) return null;
+    return { key: v, kind: '英作文', aid: a.id, title: a.title, prompt: a.prompt, words: a.words, rubric: a.rubric, total: a.total, target: a.target, me: a.me, display: a.prompt, assign: a };
+  }
+  const rb = rubricFor('英作文').criteria;
+  let item = null;
+  if (v.startsWith('std:')) item = STD_PROMPTS[Number(v.slice(4))];
+  else if (v.startsWith('lib:')) {
+    const [set, h] = v.slice(4).split('|');
+    const s = lib.sets.find((x) => x.name === set);
+    const w = s && (s.write || []).find((x) => hashText(x.q) === h);
+    if (w) item = { q: w.q, ja: w.ja, words: parseWords(w.ja) || parseWords(w.q), model: w.model };
+  } else if (v === 'custom') {
+    if (!es.custom.q.trim()) return null;
+    item = { q: es.custom.q.trim(), ja: '', words: { min: Number(es.custom.min) || 0, max: Number(es.custom.max) || 0 } };
+    if (!item.words.min) item.words = null;
+  }
+  if (!item) return null;
+  const prompt = item.q + (item.ja ? '\n' + item.ja : '');
+  return { key: (v === 'custom' ? 'custom:' + hashText(prompt) : v.startsWith('lib:') ? 'lib:' + hashText(prompt) : v), kind: '英作文', aid: '', title: item.q.slice(0, 120), prompt, words: item.words, rubric: rb, model: item.model || '', display: prompt };
+}
+let esKey = '';
+function renderEssay() {
+  const v = es.src, ctx = essayCtx();
+  $('#esCustom').hidden = v !== 'custom';
+  if (v === 'custom') { $('#esCustomQ').value = es.custom.q; $('#esCustomMin').value = es.custom.min; $('#esCustomMax').value = es.custom.max; }
+  const a = v.startsWith('a:') ? asgById(v.slice(2)) : null;
+  $('#esAssign').hidden = !a;
+  if (a) $('#esAssign').innerHTML = bannerHTML(a);
+  $('#esTask').hidden = !ctx;
+  if (ctx) $('#esTask').innerHTML = '<div class="card-head"><span class="eyebrow">お題</span><span class="kbadge">英作文</span></div>' + taskTextHTML(ctx.display) + taskMetaHTML(ctx);
+  if (!ctx) { esKey = ''; esFlow.set(null); return; }
+  if (ctx.key !== esKey) { esKey = ctx.key; esFlow.set(ctx); } else esFlow.update(ctx);
+}
+$('#esSel').addEventListener('change', (e) => { es.src = e.target.value; wst.set(ukey('esSrc'), es.src); renderEssay(); });
+$('#esReload').addEventListener('click', () => loadLibrary(true));
+$('#esCustom').addEventListener('submit', (e) => {
+  e.preventDefault();
+  es.custom = { q: $('#esCustomQ').value.trim(), min: Number($('#esCustomMin').value) || 0, max: Number($('#esCustomMax').value) || 0 };
+  if (es.custom.max && es.custom.max < es.custom.min) es.custom.max = es.custom.min;
+  wst.set(ukey('esCustom'), es.custom);
+  renderEssay();
+  $('#esFlow').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+/* ================= 要約・感想 ================= */
+const rd = { src: wst.get(ukey('rdSrc'), 'sample'), kind: wst.get('rdKind', '要約') === '感想' ? '感想' : '要約', pasted: wst.get(ukey('rdPasted'), []), showJa: false, hide: false, playing: false };
+if (!Array.isArray(rd.pasted)) rd.pasted = [];
+const rdFlow = WFlow($('#rdFlow'), writeHooks('rd', () => null));
+function libPassages() {
+  const out = [];
+  lib.sets.forEach((s) => (s.passages || []).forEach((p) => out.push({ set: s.name, title: p.title, paras: p.paras || [] })));
+  return out;
+}
+function renderReadSelect() {
+  const sel = $('#rdSel');
+  const asgs = wa.list.filter((a) => a.kind === '要約' || a.kind === '感想');
+  let html = '';
+  if (asgs.length) html += '<optgroup label="課題">' + asgs.map((a) => '<option value="a:' + esc(a.id) + '">' + esc(KIND_LABEL[a.kind]) + ': ' + esc(a.title) + '</option>').join('') + '</optgroup>';
+  const byset = {};
+  libPassages().forEach((p) => { (byset[p.set] = byset[p.set] || []).push(p); });
+  Object.keys(byset).forEach((s) => {
+    html += '<optgroup label="ライブラリ: ' + esc(s) + '">' + byset[s].map((p) => '<option value="lib:' + esc(s) + '|' + esc(p.title) + '">' + esc(p.title) + '(' + p.paras.length + '段落)</option>').join('') + '</optgroup>';
+  });
+  if (rd.pasted.length) html += '<optgroup label="貼り付けた英文">' + rd.pasted.map((p) => '<option value="paste:' + esc(p.id) + '">' + esc(p.title) + '</option>').join('') + '</optgroup>';
+  html += '<option value="sample">' + esc(SAMPLE_PASSAGE.title) + '</option>';
+  sel.innerHTML = html;
+  if (!$$('option', sel).some((o) => o.value === rd.src)) rd.src = asgs.length ? 'a:' + asgs[0].id : 'sample';
+  sel.value = rd.src;
+  const n = libPassages().length;
+  $('#rdNote').textContent = lib.msg || (!aiUsable() ? 'サンプルの英文や、貼り付けた英文で書けます。添削は、設定で GAS に接続すると使えます。'
+    : n ? 'ライブラリの長文 ' + n + '本から選べます。英文を貼り付けて使うこともできます。' : 'ライブラリに長文がまだありません。英文を貼り付けて使えます。');
+  $('#rdDel').hidden = !rd.src.startsWith('paste:');
+  $('#rdReload').hidden = !aiUsable();
+  $('#rdReload').disabled = lib.loading;
+}
+function readSource() {
+  const v = rd.src;
+  if (v.startsWith('a:')) {
+    const a = asgById(v.slice(2));
+    return a ? { title: a.title, paras: splitParas(a.text).map((en) => ({ en, ja: '' })), assign: a } : null;
+  }
+  if (v.startsWith('lib:')) {
+    const [set, title] = v.slice(4).split('|');
+    const p = libPassages().find((x) => x.set === set && x.title === title);
+    return p ? { title: p.title, paras: p.paras } : null;
+  }
+  if (v.startsWith('paste:')) {
+    const p = rd.pasted.find((x) => 'paste:' + x.id === v);
+    return p ? { title: p.title, paras: splitParas(p.text).map((en) => ({ en, ja: '' })) } : null;
+  }
+  return SAMPLE_PASSAGE;
+}
+function defaultWords(kind, passage) {
+  if (kind === '感想') return { min: 40, max: 70 };
+  const w = wordCount(passage);
+  const min = Math.max(20, Math.min(60, Math.round((w * 0.2) / 5) * 5));
+  return { min, max: min + 20 };
+}
+function readCtx(src) {
+  if (!src) return null;
+  const passage = src.paras.map((p) => p.en).join('\n\n');
+  const a = src.assign;
+  if (a) return { key: 'a:' + a.id, kind: a.kind, aid: a.id, title: a.title, prompt: a.prompt, passage, words: a.words, rubric: a.rubric, total: a.total, target: a.target, me: a.me, display: a.prompt };
+  const kind = rd.kind;
+  return { key: 'r:' + kind + ':' + hashText(passage), kind, aid: '', title: src.title, prompt: DEFAULT_TASK[kind], passage, words: defaultWords(kind, passage), rubric: rubricFor(kind).criteria, display: DEFAULT_TASK[kind] };
+}
+let rdKey = '';
+function renderRead() {
+  const src = readSource(), ctx = readCtx(src);
+  const a = src && src.assign;
+  $('#rdAssign').hidden = !a;
+  if (a) $('#rdAssign').innerHTML = bannerHTML(a);
+  $('#rdKind').hidden = !!a;
+  $$('#rdKind button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.kind === rd.kind)));
+  $('#rdCard').hidden = !src;
+  if (src) {
+    const hasJa = src.paras.some((p) => p.ja);
+    $('#rdEyebrow').textContent = '本文 · ' + src.title;
+    $('#rdBody').innerHTML = src.paras.map((p) => '<p>' + esc(p.en) + (rd.showJa && p.ja ? '<span class="pja">' + esc(p.ja) + '</span>' : '') + '</p>').join('');
+    $('#rdBody').classList.toggle('veiled', rd.hide);
+    $('#rdJaBtn').hidden = !hasJa;
+    $('#rdJaBtn').setAttribute('aria-pressed', String(rd.showJa));
+    $('#rdJaBtn').textContent = rd.showJa ? '訳を隠す' : '訳を表示';
+    $('#rdHideBtn').setAttribute('aria-pressed', String(rd.hide));
+    $('#rdHideBtn').textContent = rd.hide ? '本文を表示' : '本文を隠す';
+  }
+  $('#rdTask').hidden = !ctx;
+  if (ctx) $('#rdTask').innerHTML = '<div class="card-head"><span class="eyebrow">書くこと</span><span class="kbadge">' + esc(KIND_LABEL[ctx.kind]) + '</span></div>' + taskTextHTML(ctx.display) + taskMetaHTML(ctx);
+  if (!ctx) { rdKey = ''; rdFlow.set(null); return; }
+  if (ctx.key !== rdKey) { rdKey = ctx.key; rdFlow.set(ctx); } else rdFlow.update(ctx);
+}
+$('#rdSel').addEventListener('change', (e) => { rd.src = e.target.value; wst.set(ukey('rdSrc'), rd.src); TTS.stop(); renderReadSelect(); renderRead(); });
+$$('#rdKind button').forEach((b) => b.addEventListener('click', () => { rd.kind = b.dataset.kind; wst.set('rdKind', rd.kind); renderRead(); }));
+$('#rdJaBtn').addEventListener('click', () => { rd.showJa = !rd.showJa; renderRead(); });
+$('#rdHideBtn').addEventListener('click', () => { rd.hide = !rd.hide; renderRead(); });
+$('#rdPlay').addEventListener('click', async () => {
+  const b = $('#rdPlay');
+  if (rd.playing) { TTS.stop(); return; }
+  const src = readSource();
+  if (!src) return;
+  rd.playing = true; b.textContent = '止める';
+  await TTS.speakSeq(src.paras.flatMap((p) => splitSentences(p.en)), settings.rate);
+  rd.playing = false; b.textContent = '読み上げ';
+});
+$('#rdReload').addEventListener('click', () => loadLibrary(true));
+$('#rdNew').addEventListener('click', () => { $('#rdEditor').hidden = false; $('#rdTitle').value = ''; $('#rdInput').value = ''; $('#rdInput').focus(); });
+$('#rdCancel').addEventListener('click', () => { $('#rdEditor').hidden = true; });
+$('#rdEditor').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const text = $('#rdInput').value.trim();
+  if (!splitParas(text).length) { $('#rdInput').focus(); return; }
+  const id = Date.now().toString(36);
+  rd.pasted.unshift({ id, title: $('#rdTitle').value.trim() || splitParas(text)[0].split(' ').slice(0, 6).join(' ') + '…', text });
+  rd.pasted = rd.pasted.slice(0, 20);
+  wst.set(ukey('rdPasted'), rd.pasted);
+  rd.src = 'paste:' + id; wst.set(ukey('rdSrc'), rd.src);
+  $('#rdEditor').hidden = true;
+  renderReadSelect(); renderRead();
+});
+$('#rdDel').addEventListener('click', (e) => {
+  const b = e.currentTarget;
+  if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'もう一度押すと削除'; setTimeout(() => { b.dataset.armed = ''; b.textContent = 'この英文を削除'; }, 4000); return; }
+  b.dataset.armed = ''; b.textContent = 'この英文を削除';
+  rd.pasted = rd.pasted.filter((x) => 'paste:' + x.id !== rd.src);
+  wst.set(ukey('rdPasted'), rd.pasted);
+  rd.src = 'sample'; wst.set(ukey('rdSrc'), rd.src);
+  renderReadSelect(); renderRead();
+});
+
+/* ================= ディクテーション ================= */
+const CONTRACTIONS = {
+  "i'm": 'i am', "you're": 'you are', "we're": 'we are', "they're": 'they are', "he's": 'he is', "she's": 'she is', "it's": 'it is',
+  "that's": 'that is', "there's": 'there is', "what's": 'what is', "where's": 'where is', "how's": 'how is', "who's": 'who is', "let's": 'let us',
+  "i've": 'i have', "you've": 'you have', "we've": 'we have', "they've": 'they have', "i'll": 'i will', "you'll": 'you will',
+  "we'll": 'we will', "they'll": 'they will', "it'll": 'it will', "i'd": 'i would', "you'd": 'you would', "we'd": 'we would', "they'd": 'they would',
+  "don't": 'do not', "doesn't": 'does not', "didn't": 'did not', "isn't": 'is not', "aren't": 'are not', "wasn't": 'was not', "weren't": 'were not',
+  "can't": 'can not', cannot: 'can not', "couldn't": 'could not', "won't": 'will not', "wouldn't": 'would not', "shouldn't": 'should not',
+  "haven't": 'have not', "hasn't": 'has not', "hadn't": 'had not', ok: 'okay',
+  mr: 'mister', mrs: 'missus', dr: 'doctor',
+};
+const NUMS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'];
+function normWord(w) {
+  w = w.toLowerCase().replace(/[’‘]/g, "'").replace(/[^a-z0-9']/g, '').replace(/^'+|'+$/g, '');
+  if (!w) return [];
+  if (CONTRACTIONS[w]) return CONTRACTIONS[w].split(' ');
+  if (/^\d+$/.test(w) && Number(w) <= 20) return [NUMS[Number(w)]];
+  return [w];
+}
+function editDistance(a, b) {
+  const m = a.length, n = b.length;
+  let prev = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) {
+    const cur = [i];
+    for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[n];
+}
+/**
+ * Aligns what was typed with the sentence (case, punctuation and contractions ignored).
+ * Words that are close but not equal are reported as spelling slips; they still count as wrong.
+ */
+function scoreDictation(target, typed) {
+  const tokens = target.split(/\s+/).filter(Boolean);
+  const T = [], owner = [];
+  tokens.forEach((tok, i) => tok.split('-').forEach((part) => normWord(part).forEach((n) => { T.push(n); owner.push(i); })));
+  const sTok = typed.split(/[\s-]+/).filter(Boolean);
+  const S = [], sOwner = [];
+  sTok.forEach((tok, i) => normWord(tok).forEach((n) => { S.push(n); sOwner.push(i); }));
+  const n = T.length, m = S.length;
+  const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) dp[i][j] = T[i] === S[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+  const okT = new Array(n).fill(false), usedS = new Array(m).fill(false), spell = {};
+  const pairs = [];
+  let i = 0, j = 0;
+  while (i < n && j < m) {
+    if (T[i] === S[j]) { pairs.push([i, j]); okT[i] = true; usedS[j] = true; i++; j++; }
+    else if (dp[i + 1][j] >= dp[i][j + 1]) i++;
+    else j++;
+  }
+  // inside each gap between matches, pair a missed word with a typed word that is spelled almost the same
+  const bounds = [[-1, -1]].concat(pairs, [[n, m]]);
+  for (let k = 0; k < bounds.length - 1; k++) {
+    const [ti0, sj0] = bounds[k], [ti1, sj1] = bounds[k + 1];
+    for (let a = ti0 + 1; a < ti1; a++) {
+      let best = -1, bd = 99;
+      for (let b = sj0 + 1; b < sj1; b++) {
+        if (usedS[b]) continue;
+        const d = editDistance(T[a], S[b]);
+        if (d < bd) { bd = d; best = b; }
+      }
+      if (best >= 0 && bd <= Math.max(1, Math.floor(T[a].length / 3))) { spell[a] = sTok[sOwner[best]]; S.forEach((_, q) => { if (sOwner[q] === sOwner[best]) usedS[q] = true; }); }
+    }
+  }
+  const state = tokens.map(() => 'ok'), typedAs = {};
+  owner.forEach((o, k) => {
+    if (okT[k]) return;
+    if (spell[k] != null) { if (state[o] !== 'ng') state[o] = 'sp'; typedAs[o] = spell[k]; } else state[o] = 'ng';
+  });
+  // a contraction typed without its apostrophe ("lets" for "Let's") is a spelling slip, not a word that was not heard
+  const bare = (w) => w.toLowerCase().replace(/[^a-z0-9]/g, '');
+  tokens.forEach((t, o) => {
+    if (state[o] === 'ok' || !/['’]/.test(t)) return;
+    const k = sTok.findIndex((w, si) => bare(w) === bare(t) && S.every((_, q) => sOwner[q] !== si || !usedS[q] || spellOf(q)));
+    if (k < 0) return;
+    state[o] = 'sp'; typedAs[o] = sTok[k];
+    S.forEach((_, q) => { if (sOwner[q] === k) usedS[q] = true; });
+  });
+  function spellOf(q) { return Object.keys(spell).some((a) => spell[a] === sTok[sOwner[q]]); }
+  const hit = okT.filter(Boolean).length;
+  const extras = [];
+  S.forEach((_, k) => { if (!usedS[k]) extras.push(sTok[sOwner[k]]); });
+  return { score: n ? Math.round((hit / n) * 100) : 0, tokens: tokens.map((t, k) => ({ t, s: state[k], typed: typedAs[k] })), extras: Array.from(new Set(extras)) };
+}
+
+const dc = { src: wst.get(ukey('dcSrc'), 'std:初級'), idx: 0, best: wst.get(ukey('dcBest'), {}), plays: 0, hint: 0, result: null, typed: '' };
+let dcPending = wst.get(ukey('dcPending'), []);
+if (!Array.isArray(dcPending)) dcPending = [];
+function dictSource() {
+  const v = dc.src;
+  if (v.startsWith('a:')) { const a = asgById(v.slice(2)); return a ? { title: a.title, items: dictSentences(a.text).map((en) => ({ en, ja: '' })), assign: a } : null; }
+  if (v.startsWith('std:')) { const L = v.slice(4); return STD_DICT[L] ? { title: '標準の英文(' + L + ')', items: STD_DICT[L] } : null; }
+  if (v.startsWith('sh:')) { const s = lib.sets.find((x) => x.name === v.slice(3)); return s && s.shadow.length ? { title: s.name, items: s.shadow } : null; }
+  if (v.startsWith('pas:')) {
+    const [set, title] = v.slice(4).split('|');
+    const p = libPassages().find((x) => x.set === set && x.title === title);
+    return p ? { title: p.title, items: p.paras.flatMap((pp) => splitSentences(pp.en)).map((en) => ({ en, ja: '' })) } : null;
+  }
+  return null;
+}
+const dcKey = (src, i) => dc.src + ':' + hashText(src.items[i].en);
+function firstOpenSentence(a) {
+  const b = dictBestFor(a), n = dictSentences(a.text).length;
+  for (let i = 0; i < n; i++) if (!(b[i] >= a.target)) return i;
+  return 0;
+}
+function renderDictSelect() {
+  const sel = $('#dcSel');
+  const asgs = wa.list.filter((a) => a.kind === 'ディクテーション');
+  let html = '';
+  if (asgs.length) html += '<optgroup label="課題">' + asgs.map((a) => '<option value="a:' + esc(a.id) + '">' + esc(a.title) + '</option>').join('') + '</optgroup>';
+  const shadowSets = lib.sets.filter((s) => (s.shadow || []).length);
+  if (shadowSets.length) html += '<optgroup label="ライブラリの短文">' + shadowSets.map((s) => '<option value="sh:' + esc(s.name) + '">' + esc(s.name) + '(' + s.shadow.length + '文)</option>').join('') + '</optgroup>';
+  const ps = libPassages();
+  if (ps.length) html += '<optgroup label="ライブラリの長文">' + ps.map((p) => '<option value="pas:' + esc(p.set) + '|' + esc(p.title) + '">' + esc(p.set + ' / ' + p.title) + '</option>').join('') + '</optgroup>';
+  html += '<optgroup label="標準の英文">' + Object.keys(STD_DICT).map((L) => '<option value="std:' + L + '">' + L + '(' + STD_DICT[L].length + '文)</option>').join('') + '</optgroup>';
+  sel.innerHTML = html;
+  if (!$$('option', sel).some((o) => o.value === dc.src)) { dc.src = asgs.length ? 'a:' + asgs[0].id : 'std:初級'; dc.idx = 0; }
+  sel.value = dc.src;
+  $('#dcNote').textContent = lib.msg || (aiUsable() ? 'ライブラリの短文・長文も書き取りに使えます。' : '標準の英文で練習できます。ライブラリの英文は、設定で GAS に接続すると使えます。');
+  $('#dcReload').hidden = !aiUsable();
+  $('#dcReload').disabled = lib.loading;
+}
+function hintText(en, level) {
+  const words = en.split(/\s+/).filter(Boolean);
+  if (level === 1) return '<span>' + words.length + ' 語:</span> ' + words.map((w) => '<span class="wbox">' + '&nbsp;'.repeat(Math.max(2, Math.min(8, w.replace(/[^A-Za-z0-9']/g, '').length))) + '</span>').join('');
+  return words.map((w) => {
+    const m = w.match(/^([^A-Za-z0-9]*)([A-Za-z0-9])([A-Za-z0-9']*)(.*)$/);
+    return m ? esc(m[1] + m[2] + m[3].replace(/[A-Za-z0-9]/g, '_') + m[4]) : esc(w);
+  }).join(' ');
+}
+function renderDict() {
+  const src = dictSource();
+  const has = !!(src && src.items.length);
+  if (has && dc.idx >= src.items.length) dc.idx = 0;
+  const a = src && src.assign;
+  $('#dcAssign').hidden = !a;
+  if (a) $('#dcAssign').innerHTML = bannerHTML(a);
+  $('#dcCounter').textContent = has ? (dc.idx + 1) + ' / ' + src.items.length : '0 / 0';
+  $('#dcPlay').innerHTML = ICON.play + (dc.plays ? 'もう一度聞く' : '聞く');
+  $('#dcPlays').textContent = dc.plays ? '再生 ' + dc.plays + '回' : '';
+  ['#dcPlay', '#dcCheck', '#dcPrev', '#dcNext', '#dcHintWords', '#dcHintFirst', '#dcInput'].forEach((s) => { $(s).disabled = !has; });
+  $('#dcHintWords').setAttribute('aria-pressed', String(dc.hint === 1));
+  $('#dcHintFirst').setAttribute('aria-pressed', String(dc.hint === 2));
+  $('#dcHint').hidden = !has || !dc.hint;
+  if (has && dc.hint) $('#dcHint').innerHTML = hintText(src.items[dc.idx].en, dc.hint);
+  $('#dcEyebrow').textContent = has ? '第' + (dc.idx + 1) + '文 · 聞こえた英文を、そのまま書きましょう' : '書き取る英文がありません';
+  const best = (i) => (a ? dictBestFor(a)[i] : dc.best[dcKey(src, i)]);
+  $('#dcDots').innerHTML = has ? src.items.map((_, i) => {
+    const b = best(i);
+    return '<button type="button" data-i="' + i + '" aria-label="' + (i + 1) + '文目' + (b != null ? ' 最高 ' + b + '%' : '') + '"' + (b != null ? ' data-s="' + pctBand(b) + '"' : '') + (i === dc.idx ? ' aria-current="true"' : '') + '></button>';
+  }).join('') : '';
+  renderDictResult(src);
+}
+function renderDictResult(src) {
+  const box = $('#dcResult');
+  const r = dc.result;
+  if (!r || !src) { box.hidden = true; return; }
+  const item = src.items[dc.idx];
+  const verdict = r.score === 100 ? '満点です!' : r.score >= 85 ? 'よく聞き取れています。' : r.score >= 60 ? 'あと少し。赤い所に気をつけて、もう一度聞きましょう。' : 'もう一度、ゆっくり聞いてみましょう(0.7x がおすすめ)。';
+  const spells = r.tokens.filter((t) => t.s === 'sp');
+  box.hidden = false;
+  box.innerHTML = '<div class="score-row"><span class="score" data-s="' + pctBand(r.score) + '">' + r.score + '<small>%</small></span><span class="verdict">' + verdict + '</span></div>' +
+    '<p class="diff">' + r.tokens.map((t) => '<span class="' + (t.s === 'ok' ? 'ok' : t.s === 'sp' ? 'sp' : 'ng') + '">' + esc(t.t) + (t.s === 'sp' ? '<small>(' + esc(t.typed) + ')</small>' : '') + '</span>').join(' ') + '</p>' +
+    '<div class="legend"><span>緑: 正解</span><span>赤: 聞き取れなかった語</span>' + (spells.length ? '<span>黄: つづりのまちがい(かっこ内があなたの答え)</span>' : '') + '</div>' +
+    '<p class="heard">あなたの答え: <span>' + esc(dc.typed) + '</span>' + (r.extras.length ? '<br>余分な語: <span>' + esc(r.extras.join(', ')) + '</span>' : '') + '</p>' +
+    (item.ja ? '<p class="fine">訳: ' + esc(item.ja) + '</p>' : '') +
+    '<div class="actions"><button type="button" class="btn" data-act="retry">もう一度書く</button>' +
+    (dc.idx < src.items.length - 1 ? '<button type="button" class="btn primary" data-act="next">次の文へ</button>' : '<span class="fine">最後の文です。</span>') + '</div>';
+}
+function dictMove(i, autoplay) {
+  const src = dictSource();
+  if (!src || !src.items.length) return;
+  dc.idx = (i + src.items.length) % src.items.length;
+  dc.plays = 0; dc.result = null; dc.typed = '';
+  $('#dcInput').value = '';
+  TTS.stop();
+  renderDict();
+  if (autoplay) playDict();
+}
+async function playDict() {
+  const src = dictSource();
+  if (!src || !src.items.length) return;
+  dc.plays++;
+  renderDict();
+  await TTS.speak(src.items[dc.idx].en, settings.rate);
+  if (currentTab === 'dict') $('#dcInput').focus({ preventScroll: true });
+}
+function checkDict() {
+  const src = dictSource();
+  const typed = $('#dcInput').value.trim();
+  if (!src || !typed) { $('#dcInput').focus(); return; }
+  const item = src.items[dc.idx];
+  const r = scoreDictation(item.en, typed);
+  dc.result = r; dc.typed = typed;
+  const a = src.assign;
+  if (a) {
+    const b = wa.dbest[a.id] || (wa.dbest[a.id] = {});
+    if (!(b[dc.idx] >= r.score)) b[dc.idx] = r.score;
+    wst.set(ukey('asgDict'), wa.dbest);
+  } else {
+    const k = dcKey(src, dc.idx);
+    if (!(dc.best[k] >= r.score)) dc.best[k] = r.score;
+    wst.set(ukey('dcBest'), dc.best);
+  }
+  bumpToday();
+  dcPending.push({ ts: new Date().toISOString(), assign: a ? a.id : '', title: src.title, i: dc.idx, target: item.en, text: typed, score: r.score, plays: dc.plays });
+  if (dcPending.length > 300) dcPending = dcPending.slice(-300);
+  wst.set(ukey('dcPending'), dcPending);
+  flushDict();
+  renderDict();
+  if (a) renderAssignments();
+  $('#dcResult').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+let dcFlushing = false;
+async function flushDict() {
+  if (dcFlushing || !aiUsable() || !dcPending.length || (server.classMode && !who)) return;
+  dcFlushing = true;
+  const batch = dcPending.slice(0, 50);
+  let ok = false;
+  try {
+    await gasCall('wLog', { entries: batch });
+    dcPending = dcPending.slice(batch.length);
+    wst.set(ukey('dcPending'), dcPending);
+    stats.dirty = true;
+    ok = true;
+  } catch (e) { handleAIError(e); } finally { dcFlushing = false; }
+  if (ok && dcPending.length) flushDict();
+}
+$('#dcSel').addEventListener('change', (e) => {
+  dc.src = e.target.value; wst.set(ukey('dcSrc'), dc.src);
+  const src = dictSource();
+  dc.idx = src && src.assign ? firstOpenSentence(src.assign) : 0;
+  dictMove(dc.idx, false);
+});
+$('#dcReload').addEventListener('click', () => loadLibrary(true));
+$('#dcPlay').addEventListener('click', playDict);
+$('#dcCheck').addEventListener('click', checkDict);
+$('#dcPrev').addEventListener('click', () => dictMove(dc.idx - 1, true));
+$('#dcNext').addEventListener('click', () => dictMove(dc.idx + 1, true));
+$('#dcDots').addEventListener('click', (e) => { const b = e.target.closest('[data-i]'); if (b) dictMove(Number(b.dataset.i), true); });
+$('#dcHintWords').addEventListener('click', () => { dc.hint = dc.hint === 1 ? 0 : 1; renderDict(); });
+$('#dcHintFirst').addEventListener('click', () => { dc.hint = dc.hint === 2 ? 0 : 2; renderDict(); });
+$('#dcInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); checkDict(); }
+});
+$('#dcResult').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-act]');
+  if (!b) return;
+  if (b.dataset.act === 'next') dictMove(dc.idx + 1, true);
+  else { dc.result = null; $('#dcInput').value = ''; renderDict(); playDict(); }
+});
+
+/* ================= records ================= */
+const stats = { data: null, dirty: true, loading: false, open: {}, cache: {} };
+async function loadStats(force) {
+  if (!aiUsable()) { $('#logBody').hidden = true; $('#logStatus').textContent = ''; return; }
+  if (server.classMode && !who) { $('#logStatus').textContent = 'ログインすると、自分の記録が見られます。'; return; }
+  if (stats.loading || (!force && !stats.dirty && stats.data)) { renderStats(); return; }
+  stats.loading = true;
+  $('#logStatus').textContent = '記録を読み込んでいます…';
+  try {
+    stats.data = await gasCall('wStats', {});
+    stats.dirty = false;
+    if (stats.data.sheetUrl) { AI.sheetUrl = stats.data.sheetUrl; store.set('sheetUrl', AI.sheetUrl); updateAIUI(); }
+    $('#logStatus').textContent = dcPending.length ? 'まだ送っていない書き取りの結果が ' + dcPending.length + ' 件あります。' : '';
+  } catch (e) {
+    handleAIError(e);
+    $('#logStatus').textContent = '記録を読み込めませんでした。' + errText(e);
+  } finally { stats.loading = false; }
+  renderStats();
+}
+function renderStats() {
+  const d = stats.data;
+  $('#logBody').hidden = !d;
+  if (!d) return;
+  $('#stToday').textContent = d.today; $('#stWeek').textContent = d.last7; $('#stStreak').textContent = d.streak;
+  const pct = (v) => (v == null ? '—' : v + '%');
+  $('#avWrite').textContent = pct(d.avg.write); $('#avFirst').textContent = pct(d.avg.first); $('#avDict').textContent = pct(d.avg.dict);
+  $('#avDictN').textContent = '直近7日 · ' + (d.avg.dictCount || 0) + '文';
+  $('#recentList').innerHTML = d.recent.length ? d.recent.map((r) => {
+    const open = stats.open[r.id];
+    return '<li><span class="r-when">' + esc(fmtWhen(r.ts)) + '</span><span class="r-what"><span class="r-mode">' + esc(KIND_LABEL[r.kind] || r.kind) + ' · ' + (r.stage === 2 ? '書き直し' : '1回目') + (r.aid ? ' · 課題' : '') + ' · ' + r.words + '語</span><span class="r-text">' + esc(r.title) + '</span></span>' +
+      '<span class="r-side"><span class="r-score" data-s="' + ratioBand(r.score, r.max) + '">' + (r.score != null ? r.score + '/' + r.max : '—') + '</span>' +
+      '<button type="button" class="mini" data-view="' + esc(r.id) + '" aria-expanded="' + !!open + '">' + (open ? '閉じる' : '見る') + '</button></span>' +
+      (open ? '<div class="r-detail" id="det-' + esc(r.id) + '">' + (stats.cache[r.id] || '<p class="fine">読み込んでいます…</p>') + '</div>' : '') + '</li>';
+  }).join('') : '<li><span class="r-what"><span class="r-text">まだ記録がありません。英作文や要約を提出すると、ここに並びます。</span></span></li>';
+}
+async function openDetail(id) {
+  try {
+    let r = await gasCall('wGet', { ids: [id] });
+    let it = r.items[0];
+    if (!it) throw { code: 'not_found' };
+    let html;
+    if (it.stage === 2 && it.data.did) {
+      r = await gasCall('wGet', { ids: [it.data.did] });
+      const first = r.items[0];
+      html = first ? doneViewHTML({ draft: first.text, fb1: first.data, revised: it.text, fb2: it.data }, { noPlay: true, showFirst: true }) : '';
+    }
+    if (!html) html = it.stage === 2 ? doneViewHTML({ draft: it.text, fb1: null, revised: it.text, fb2: it.data }, { noPlay: true }) : hintViewHTML(it.text, it.data);
+    stats.cache[id] = html;
+  } catch (e) {
+    handleAIError(e);
+    stats.cache[id] = '<p class="flow-msg">' + esc(errText(e)) + '</p>';
+  }
+  renderStats();
+}
+$('#recentList').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-view]');
+  if (!b) return;
+  const id = b.dataset.view;
+  stats.open[id] = !stats.open[id];
+  renderStats();
+  if (stats.open[id] && !stats.cache[id]) openDetail(id);
+});
+$('#logRefresh').addEventListener('click', () => { flushDict(); loadStats(true); });
+
+/* ================= who is practicing: login, roles (same as SpeakLoop) ================= */
+function setGate(on) { document.body.classList.toggle('gated', !!on); }
+function setWho(w) {
+  if (w) store.set('who', w); else store.del('who');
+  try { history.replaceState(null, '', location.pathname); } catch (e) { /* ignore */ } // land on the new person's own first tab
+  location.reload(); // reload so per-person drafts and queues are read for the new person
+}
+function identityInvalid(code) {
+  who = null;
+  store.del('who');
+  renderWho();
+  openLogin(errText({ code }), { closable: !server.classMode });
+}
+function renderWho() {
+  const pill = $('#whoPill');
+  pill.hidden = !who;
+  if (who) $('#whoText').textContent = who.role === 'teacher' ? '先生' : who.name + (who.cls ? ' · ' + who.cls : '');
+  $('#tabbtn-assign').hidden = !(who && who.role === 'student');
+  $('#tabbtn-teacher').hidden = !(who && who.role === 'teacher');
+  $('#whoSetup').hidden = !aiUsable();
+  $('#gasForm').hidden = !!(who && who.role === 'student');
+  $('#whoStatus').textContent = !who
+    ? (server.classMode ? 'まだログインしていません。' : 'ログインせずに使っています。名簿に生徒がいないあいだは、ログインなしで使えます。')
+    : who.role === 'teacher' ? '先生としてログインしています。' : who.name + '(' + who.cls + ')として練習しています。';
+  $('#whoSwitch').textContent = who ? '利用者を切り替える' : (server.classMode ? 'ログインする' : '先生としてログイン');
+  $('#whoLogout').hidden = !who;
+}
+$('#whoPill').addEventListener('click', () => openLogin('', { closable: true }));
+$('#whoSwitch').addEventListener('click', () => { toggleSettings(false); openLogin('', { closable: true, teacher: !who && !server.classMode }); });
+$('#whoLogout').addEventListener('click', () => setWho(null));
+$('#loginLogout').addEventListener('click', () => setWho(null));
+$('#loginClose').addEventListener('click', () => { $('#loginPanel').hidden = true; setGate(false); });
+
+const login = { classes: [], cls: store.get('lastClass', ''), pick: null };
+async function openLogin(msg, opts) {
+  opts = opts || {};
+  const panel = $('#loginPanel');
+  panel.hidden = false;
+  $('#loginClose').hidden = !opts.closable;
+  setGate(!opts.closable);
+  $('#loginMsg').textContent = msg || '';
+  $('#loginCurrent').hidden = !who;
+  if (who) $('#loginCurrentText').textContent = 'いまは「' + (who.role === 'teacher' ? '先生' : who.name + '(' + who.cls + ')') + '」でログインしています。';
+  if (opts.teacher) $('#teacherLogin').open = true;
+  login.pick = null;
+  $('#loginConfirm').hidden = true;
+  panel.scrollIntoView({ block: 'start' });
+  if (!aiUsable()) { $('#loginMsg').textContent = '先に設定で GAS に接続してください。'; return; }
+  $('#loginNames').innerHTML = '<p class="fine">名簿を読み込んでいます…</p>';
+  try {
+    const r = await gasCall('roster', {});
+    login.classes = Array.isArray(r.classes) ? r.classes : [];
+  } catch (e) {
+    login.classes = [];
+    $('#loginMsg').textContent = '名簿を読み込めませんでした。' + errText(e);
+  }
+  renderLogin();
+}
+function renderLogin() {
+  const cs = login.classes;
+  if (!cs.length) {
+    $('#loginTitle').textContent = server.classMode ? 'クラスと名前を選んでください' : 'ログイン';
+    $('#loginClasses').innerHTML = '';
+    $('#loginNames').innerHTML = '<p class="fine">名簿にまだ生徒がいません。先生は下の「先生はこちら」からログインして、「先生」タブの「生徒」で名簿を作ってください。</p>';
+    $('#teacherLogin').open = true;
+    return;
+  }
+  $('#loginTitle').textContent = 'クラスと名前を選んでください';
+  if (!cs.some((c) => c.name === login.cls)) login.cls = cs[0].name;
+  $('#loginClasses').innerHTML = cs.map((c) => '<button type="button" class="chip" data-cls="' + esc(c.name) + '" aria-pressed="' + (c.name === login.cls) + '">' + esc(c.name) + '</button>').join('');
+  const cur = cs.find((c) => c.name === login.cls);
+  $('#loginNames').innerHTML = cur.students.map((st) => '<button type="button" class="name-btn" data-sid="' + esc(st.id) + '" aria-pressed="' + (login.pick && login.pick.id === st.id) + '">' +
+    '<span class="no">' + (st.no != null ? st.no : '') + '</span><span class="nm">' + esc(st.name) + '</span></button>').join('');
+}
+$('#loginClasses').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-cls]');
+  if (!b) return;
+  login.cls = b.dataset.cls; login.pick = null;
+  $('#loginConfirm').hidden = true;
+  renderLogin();
+});
+$('#loginNames').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-sid]');
+  if (!b) return;
+  const c = login.classes.find((x) => x.name === login.cls);
+  login.pick = c && c.students.find((x) => x.id === b.dataset.sid);
+  if (!login.pick) return;
+  $('#loginConfirmText').textContent = login.pick.name + '(' + login.cls + ')で練習を始めます。';
+  $('#loginConfirm').hidden = false;
+  renderLogin();
+  $('#loginGo').focus();
+});
+$('#loginBack').addEventListener('click', () => { login.pick = null; $('#loginConfirm').hidden = true; renderLogin(); });
+$('#loginGo').addEventListener('click', () => {
+  if (!login.pick) return;
+  store.set('lastClass', login.cls);
+  setWho({ role: 'student', sid: login.pick.id, name: login.pick.name, cls: login.cls });
+});
+$('#teacherForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const pw = $('#teacherPw').value;
+  if (!pw) return;
+  $('#teacherGo').disabled = true;
+  $('#teacherMsg').textContent = '確認しています…';
+  try {
+    const r = await gasCall('teacherLogin', { password: pw });
+    if (r.sheetUrl) store.set('sheetUrl', r.sheetUrl);
+    setWho({ role: 'teacher', session: r.session });
+  } catch (err) {
+    $('#teacherMsg').textContent = errText(err);
+    $('#teacherGo').disabled = false;
+  }
+});
+
+/** Asks GAS who we are and whether the class roster is in use, then shows the right screens. */
+async function refreshServer() {
+  if (!aiUsable()) { setGate(false); renderWho(); return; }
+  try {
+    const r = await gasCall('ping', {});
+    server = { classMode: !!r.classMode, hasTeacherPassword: !!r.hasTeacherPassword };
+    store.set('server', server);
+    if (r.sheetUrl) { AI.sheetUrl = r.sheetUrl; store.set('sheetUrl', r.sheetUrl); }
+    AI.note = r.hasKey ? '' : 'no_key';
+    if (r.role === 'invalid') { identityInvalid(r.code); return; }
+    if (r.role === 'student' && who && r.student && (who.name !== r.student.name || who.cls !== r.student.cls)) {
+      who.name = r.student.name; who.cls = r.student.cls; store.set('who', who);
+    }
+    if (r.role === 'guest') { renderWho(); openLogin(); return; }
+    $('#loginPanel').hidden = true; setGate(false);
+    updateAIUI();
+    if (who && who.role === 'student') loadAssignments(true);
+    if (who && who.role === 'teacher' && currentTab === 'teacher') loadOverview(true);
+    flushDict();
+  } catch (e) {
+    handleAIError(e);
+  }
+}
+
+/* ================= teacher screen ================= */
+const tch = { data: null, loading: false, sub: wst.get('tSub', 'assign'), open: {}, view: {}, arm: {}, kind: '英作文', targetDirty: false, rubricEdit: '' };
+function armOnce(key, btn, label) {
+  // Two presses for anything that deletes, since the page cannot show a confirm dialog.
+  if (tch.arm[key]) { clearTimeout(tch.arm[key]); delete tch.arm[key]; return true; }
+  const orig = btn.textContent;
+  btn.textContent = label || 'もう一度押すと削除';
+  tch.arm[key] = setTimeout(() => { delete tch.arm[key]; if (btn.isConnected) btn.textContent = orig; }, 4000);
+  return false;
+}
+async function loadOverview(force, doneMsg) {
+  if (!who || who.role !== 'teacher' || !aiUsable()) return;
+  if (tch.data && !force) { renderTeacher(); return; }
+  if (tch.loading) return;
+  tch.loading = true;
+  $('#tStatus').textContent = doneMsg || '読み込んでいます…';
+  $('#tRefresh').disabled = true;
+  try {
+    tch.data = await gasCall('tWOverview', {});
+    lib.rubrics = tch.data.rubrics || []; lib.defaults = tch.data.defaults || lib.defaults;
+    wst.set('rubrics', lib.rubrics); wst.set('defaults', lib.defaults);
+    if (tch.data.sheetUrl) { AI.sheetUrl = tch.data.sheetUrl; store.set('sheetUrl', AI.sheetUrl); }
+    $('#tStatus').textContent = doneMsg || '';
+  } catch (e) {
+    handleAIError(e);
+    $('#tStatus').textContent = '読み込めませんでした。' + errText(e);
+  } finally {
+    tch.loading = false;
+    $('#tRefresh').disabled = false;
+  }
+  renderTeacher();
+  updateAIUI();
+}
+$('#tRefresh').addEventListener('click', () => { loadLibrary(true); loadOverview(true); });
+$$('#tSeg button').forEach((b) => b.addEventListener('click', () => { tch.sub = b.dataset.t; wst.set('tSub', tch.sub); renderTeacher(); }));
+function renderTeacher() {
+  $$('#tSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.t === tch.sub)));
+  ['assign', 'rubric', 'lib', 'roster'].forEach((k) => { $('#tsec-' + k).hidden = k !== tch.sub; });
+  const d = tch.data;
+  if (!d) return;
+  $('#setNames').innerHTML = lib.sets.map((x) => '<option value="' + esc(x.name) + '"></option>').join('');
+  $('#classNames').innerHTML = (d.classes || []).map((c) => '<option value="' + esc(c.name) + '"></option>').join('');
+  renderTW(); renderTR(); renderTL(); renderTS();
+}
+function studentsFor(a) {
+  const all = a.classes.includes('全員');
+  const out = [];
+  (tch.data.classes || []).forEach((c) => { if (all || a.classes.includes(c.name)) c.students.forEach((st) => out.push(Object.assign({ cls: c.name }, st))); });
+  return out;
+}
+/** Pairs each first draft with the rewrite that followed it. */
+function pairsOf(tries) {
+  const out = [];
+  (tries || []).forEach((t) => {
+    if (t.stage === 1) out.push({ s1: t, s2: null });
+    else if (out.length && !out[out.length - 1].s2) out[out.length - 1].s2 = t;
+  });
+  return out;
+}
+
+/* ---- 配信: list ---- */
+function wStatus(a, p) {
+  if (a.kind === 'ディクテーション') {
+    const n = dictSentences(a.text).length, s = (p && p.sents) || {};
+    const k = Array.from({ length: n }, (_, i) => s[i]).filter((v) => v >= a.target).length;
+    return { done: n > 0 && k === n, started: Object.keys(s).length > 0, label: k === n && n ? '完了' : Object.keys(s).length ? k + ' / ' + n : '未着手' };
+  }
+  if (!p || !p.tries || !p.tries.length) return { done: false, started: false, label: '未提出' };
+  if (p.best != null && p.best >= a.target) return { done: true, started: true, label: '目標達成' };
+  if (p.pending) return { done: false, started: true, label: '書き直し待ち' };
+  return { done: false, started: true, label: '提出済み' };
+}
+function renderTW() {
+  const list = tch.data.assignments || [];
+  $('#twList').innerHTML = list.length ? list.map((a) => {
+    const sts = studentsFor(a), prog = a.progress || {};
+    const isDict = a.kind === 'ディクテーション';
+    const states = sts.map((st) => wStatus(a, prog[st.id]));
+    const done = states.filter((s) => s.done).length, started = states.filter((s) => s.started).length;
+    const waiting = isDict ? 0 : sts.filter((st) => prog[st.id] && prog[st.id].pending).length;
+    const closed = a.status === '終了', open = !!tch.open[a.id];
+    const n = isDict ? dictSentences(a.text).length : 0;
+    const meta = [fmtDay(a.date) + ' 配信', a.classes.join(', '), isDict ? n + '文 · 目標 各文' + a.target + '%' : (a.words ? wordsText(a.words) + ' · ' : '') + '満点 ' + a.total + '点 · 目標 ' + a.target + '点'].join(' · ');
+    let table = '';
+    if (open) {
+      const head = '<th>クラス</th><th>番号</th><th>名前</th><th>状態</th>' + (isDict ? Array.from({ length: n }, (_, i) => '<th>第' + (i + 1) + '文</th>').join('') : '<th>1回目</th><th>書き直し(最高)</th><th>回数</th><th>最後</th><th></th>');
+      const rows = sts.map((st, k) => {
+        const p = prog[st.id], s = states[k];
+        const cur = tch.view[a.id] && tch.view[a.id].sid === st.id;
+        let cells;
+        if (isDict) {
+          const b = (p && p.sents) || {};
+          cells = Array.from({ length: n }, (_, i) => b[i] == null ? '<td class="num muted">—</td>' : '<td class="num" data-s="' + (b[i] >= a.target ? 'good' : b[i] >= a.target - 20 ? 'warn' : 'miss') + '">' + b[i] + '%</td>').join('');
+        } else {
+          const pr = pairsOf(p && p.tries), last = pr[pr.length - 1];
+          const s1 = last && last.s1 ? last.s1.score : null;
+          cells = '<td class="num">' + (s1 != null ? s1 : '<span class="muted">—</span>') + '</td>' +
+            '<td class="num"' + (p && p.best != null ? ' data-s="' + (p.best >= a.target ? 'good' : 'warn') + '"' : '') + '>' + (p && p.best != null ? p.best + ' / ' + a.total : '<span class="muted">—</span>') + '</td>' +
+            '<td class="num">' + (p ? p.n || 0 : 0) + '</td><td class="' + (p && p.last ? '' : 'muted') + '">' + (p && p.last ? fmtDay(p.last) : '—') + '</td>' +
+            '<td>' + (p && p.tries && p.tries.length ? '<button type="button" class="mini" data-tw="view" data-id="' + esc(a.id) + '" data-sid="' + esc(st.id) + '" aria-pressed="' + cur + '">' + (cur ? '表示中' : '見る') + '</button>' : '') + '</td>';
+        }
+        return '<tr' + (cur ? ' aria-current="true"' : '') + '><td>' + esc(st.cls) + '</td><td class="num">' + (st.no != null ? st.no : '') + '</td><td>' + esc(st.name) + '</td>' +
+          '<td' + (s.done ? ' data-s="good"' : '') + '>' + s.label + '</td>' + cells + '</tr>';
+      }).join('');
+      table = '<div class="tbl-wrap"><table class="ptable"><thead><tr>' + head + '</tr></thead><tbody>' +
+        (rows || '<tr><td colspan="9" class="muted">配信先のクラスに生徒がいません。</td></tr>') + '</tbody></table></div>' +
+        (tch.view[a.id] ? '<div class="viewer" id="viewer-' + esc(a.id) + '">' + tch.view[a.id].html + '</div>' : '');
+    }
+    return '<article class="tcard">' +
+      '<div class="tcard-top"><div><span class="kbadge">' + esc(KIND_LABEL[a.kind]) + '</span><h3>' + esc(a.title) + '</h3><p class="fine">' + esc(meta) + '</p></div>' +
+      '<span class="state' + (closed ? ' closed' : ' done') + '">' + (closed ? '終了' : '公開中') + '</span></div>' +
+      '<div class="aprog"><span class="aprog-bar"><i style="width:' + (sts.length ? Math.round((done / sts.length) * 100) : 0) + '%"></i></span>' +
+      '<span class="aprog-n">' + (isDict ? '完了 ' : '目標達成 ') + done + ' / ' + sts.length + '人 · 取り組み ' + started + '人' + (waiting ? ' · 書き直し待ち ' + waiting + '人' : '') + '</span></div>' +
+      '<div class="actions"><button type="button" class="mini" data-tw="table" data-id="' + esc(a.id) + '" aria-expanded="' + open + '">' + (open ? '一覧を閉じる' : '生徒ごとの提出を見る') + '</button>' +
+      '<button type="button" class="mini" data-tw="' + (closed ? 'open' : 'close') + '" data-id="' + esc(a.id) + '">' + (closed ? '再開する' : '終了する(生徒に表示しない)') + '</button>' +
+      '<button type="button" class="mini" data-tw="delete" data-id="' + esc(a.id) + '">削除</button></div>' + table + '</article>';
+  }).join('') : '<div class="empty-card"><p><b>まだ配信していません。</b></p><p class="fine">「課題を配信する」から、英作文・要約・感想・ディクテーションの課題をクラスに配信できます。生徒の「課題」タブに表示され、提出と点数がここに集まります。</p></div>';
+}
+async function loadView(aid, sid, pairIdx) {
+  const a = (tch.data.assignments || []).find((x) => x.id === aid);
+  const p = a && (a.progress || {})[sid];
+  const pr = pairsOf(p && p.tries);
+  if (!pr.length) return;
+  const k = pairIdx == null ? pr.length - 1 : pairIdx;
+  const pair = pr[k];
+  const st = studentsFor(a).find((x) => x.id === sid) || { name: '', cls: '' };
+  const head = '<div class="viewer-head"><h4>' + esc(st.name) + '(' + esc(st.cls) + ')</h4><div class="actions">' +
+    (pr.length > 1 ? pr.map((_, i) => '<button type="button" class="mini" data-tw="pair" data-id="' + esc(aid) + '" data-sid="' + esc(sid) + '" data-k="' + i + '" aria-pressed="' + (i === k) + '">' + (i + 1) + '回目の取り組み</button>').join('') : '') +
+    '<button type="button" class="mini" data-tw="close-view" data-id="' + esc(aid) + '">閉じる</button></div></div>';
+  tch.view[aid] = { sid, k, html: head + '<p class="fine">読み込んでいます…</p>' };
+  renderTW();
+  try {
+    const ids = [pair.s1 && pair.s1.id, pair.s2 && pair.s2.id].filter(Boolean);
+    const r = await gasCall('wGet', { ids });
+    const f = r.items.find((x) => pair.s1 && x.id === pair.s1.id), s = r.items.find((x) => pair.s2 && x.id === pair.s2.id);
+    let body = '';
+    if (f && s) body = doneViewHTML({ draft: f.text, fb1: f.data, revised: s.text, fb2: s.data }, { target: a.target, noPlay: true, showFirst: true });
+    else if (f) body = hintViewHTML(f.text, f.data, { label: '1回目の評価(書き直しはまだです)', draftLabel: '生徒の英文' });
+    body = '<p class="fine">' + [f ? '1回目 ' + fmtWhen(f.ts) + '(' + f.words + '語)' : '', s ? '書き直し ' + fmtWhen(s.ts) + '(' + s.words + '語)' : ''].filter(Boolean).join(' · ') + '</p>' + body;
+    if (tch.view[aid] && tch.view[aid].sid === sid && tch.view[aid].k === k) tch.view[aid].html = head + body;
+  } catch (e) {
+    handleAIError(e);
+    if (tch.view[aid]) tch.view[aid].html = head + '<p class="flow-msg">' + esc(errText(e)) + '</p>';
+  }
+  renderTW();
+}
+$('#twList').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-tw]');
+  if (!b) return;
+  const id = b.dataset.id, op = b.dataset.tw;
+  if (op === 'table') { tch.open[id] = !tch.open[id]; renderTW(); return; }
+  if (op === 'view') { loadView(id, b.dataset.sid); return; }
+  if (op === 'pair') { loadView(id, b.dataset.sid, Number(b.dataset.k)); return; }
+  if (op === 'close-view') { delete tch.view[id]; renderTW(); return; }
+  if (op === 'delete' && !armOnce('del:' + id, b, 'もう一度押すと削除(記録は残ります)')) return;
+  b.disabled = true;
+  try {
+    await gasCall('tWAssignUpdate', { id, op });
+    await loadOverview(true, op === 'delete' ? '配信を削除しました。提出された英文はスプレッドシートに残っています。' : op === 'close' ? '配信を終了しました。生徒の課題一覧には表示されません。' : '配信を再開しました。');
+  } catch (err) {
+    handleAIError(err);
+    $('#tStatus').textContent = errText(err);
+    b.disabled = false;
+  }
+});
+
+/* ---- 配信: form ---- */
+function parseRubricLines(text) {
+  const out = [], bad = [];
+  String(text || '').split('\n').forEach((line) => {
+    const t = line.trim();
+    if (!t) return;
+    const c = t.split(/\t|\s*[|｜]\s*/).map((x) => x.trim());
+    const pts = Math.round(Number(String(c[1] || '').replace(/[０-９]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 0xFEE0)).replace(/[^\d.]/g, '')));
+    if (!c[0] || !(pts >= 1)) { bad.push(t); return; }
+    out.push({ name: c[0], points: Math.min(20, pts), desc: c.slice(2).join(' ') });
+  });
+  return { list: out.slice(0, 8), bad, over: out.length > 8 };
+}
+const rubricLines = (criteria) => criteria.map((c) => c.name + ' | ' + c.points + ' | ' + c.desc).join('\n');
+const rubricTotal = (text) => parseRubricLines(text).list.reduce((s, c) => s + c.points, 0);
+function defaultsFromList(list) {
+  const pick = (w, k) => list.find((x) => x.name.includes(w)) || list[0] || BUILTIN_RUBRICS[k];
+  return { '英作文': pick('英作文', '英作文'), '要約': pick('要約', '要約'), '感想': pick('感想', '感想') };
+}
+function twLibOptions(kind) {
+  if (kind === '英作文') {
+    return lib.sets.flatMap((s) => (s.write || []).map((w) => ({ v: 'w:' + s.name + '|' + hashText(w.q), label: s.name + ' / ' + (w.q.length > 60 ? w.q.slice(0, 58) + '…' : w.q), item: w })));
+  }
+  const ps = libPassages().map((p) => ({ v: 'p:' + p.set + '|' + p.title, label: p.set + ' / ' + p.title + '(' + p.paras.length + '段落)', item: p }));
+  if (kind !== 'ディクテーション') return ps;
+  return ps.concat(lib.sets.filter((s) => (s.shadow || []).length).map((s) => ({ v: 'sh:' + s.name, label: s.name + ' / 短文 ' + s.shadow.length + '文', item: s })));
+}
+function openTwForm() {
+  $('#twForm').hidden = false;
+  $('#twNew').hidden = true;
+  $('#twForm').reset();
+  tch.targetDirty = false;
+  const cs = (tch.data && tch.data.classes) || [];
+  $('#twClasses').innerHTML = '<label><input type="checkbox" value="全員" id="twAll"> 全員</label>' +
+    cs.map((c) => '<label><input type="checkbox" value="' + esc(c.name) + '"> ' + esc(c.name) + '(' + c.students.length + '人)</label>').join('');
+  setTwKind(tch.kind || '英作文', true);
+  if (!lib.loaded) loadLibrary(true).then(() => fillTwLib());
+  $('#twTitle').focus();
+}
+function closeTwForm() { $('#twForm').hidden = true; $('#twNew').hidden = false; $('#twForm').reset(); }
+function fillTwLib() {
+  const opts = twLibOptions(tch.kind);
+  $('#twLib').innerHTML = '<option value="">(ライブラリから選ばない)</option>' + opts.map((o) => '<option value="' + esc(o.v) + '">' + esc(o.label) + '</option>').join('');
+  $('#twLibLabel').textContent = tch.kind === '英作文' ? 'ライブラリのお題から選ぶ(ないときは下に書きます)' : 'ライブラリの英文から選ぶ(ないときは下に貼り付けます)';
+}
+function fillTwRubrics() {
+  const list = lib.rubrics.length ? lib.rubrics : Object.values(BUILTIN_RUBRICS);
+  const def = (lib.defaults || defaultsFromList(lib.rubrics))[tch.kind] || BUILTIN_RUBRICS[tch.kind];
+  $('#twRubricSel').innerHTML = list.map((r, i) => '<option value="' + i + '">' + esc(r.name) + '(満点 ' + r.criteria.reduce((s, c) => s + c.points, 0) + '点)</option>').join('') + '<option value="">(この課題用に自分で書く)</option>';
+  const k = Math.max(0, list.findIndex((r) => r.name === def.name));
+  $('#twRubricSel').value = String(k);
+  $('#twRubric').value = rubricLines(list[k] ? list[k].criteria : def.criteria);
+}
+function setTwKind(kind, initial) {
+  const prevKind = tch.kind;
+  tch.kind = kind;
+  const isDict = kind === 'ディクテーション';
+  $$('#twKind button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.kind === kind)));
+  $('#twPromptBox').hidden = isDict;
+  $('#twTextBox').hidden = kind === '英作文';
+  $('#twWordsBox').hidden = isDict;
+  $('#twRubricBox').hidden = isDict;
+  $('#twModelBox').hidden = isDict;
+  $('#twPromptLabel').textContent = kind === '英作文' ? 'お題・指示(英語のお題と日本語の指示を、行を分けて書けます)' : '指示(英語と日本語。そのままでも使えます)';
+  $('#twPrompt').placeholder = kind === '英作文' ? 'Do you think high school students should have part-time jobs?\n賛成か反対か、理由を2つ挙げて書きなさい。' : '';
+  const cur = $('#twPrompt').value.trim();
+  if (kind !== '英作文' && (!cur || cur === (DEFAULT_TASK[prevKind] || '').trim())) $('#twPrompt').value = DEFAULT_TASK[kind];
+  if (kind === '英作文' && cur && cur === (DEFAULT_TASK[prevKind] || '').trim()) $('#twPrompt').value = '';
+  $('#twTextLabel').textContent = isDict ? '書き取らせる英文(1文ずつ出題します。段落や改行はそのままで大丈夫です)' : '本文(段落のあいだに空行を入れます)';
+  if (initial || !isDict) fillTwRubrics();
+  fillTwLib();
+  $('#twTarget').min = isDict ? 50 : 1;
+  if (!tch.targetDirty || initial || (prevKind === 'ディクテーション') !== isDict) { tch.targetDirty = false; autoTarget(); }
+  if (kind !== '英作文' && !isDict && !$('#twMin').value) autoWords();
+  updateTwCount();
+}
+function autoTarget() {
+  if (tch.kind === 'ディクテーション') { $('#twTarget').value = 80; return; }
+  const t = rubricTotal($('#twRubric').value);
+  if (t) $('#twTarget').value = Math.max(1, Math.round(t * 0.7));
+}
+function autoWords() {
+  if (tch.kind === '感想') { $('#twMin').value = 40; $('#twMax').value = 70; return; }
+  if (tch.kind === '要約') { const w = defaultWords('要約', $('#twText').value); $('#twMin').value = w.min; $('#twMax').value = w.max; }
+}
+function updateTwCount() {
+  const isDict = tch.kind === 'ディクテーション';
+  if (isDict) {
+    const n = dictSentences($('#twText').value).length;
+    $('#twTarget').max = 100;
+    $('#twTargetUnit').textContent = '% 以上で、その文は達成';
+    $('#twCount').textContent = n ? n + '文を1文ずつ出題します。' : '';
+    return;
+  }
+  const r = parseRubricLines($('#twRubric').value);
+  const total = r.list.reduce((s, c) => s + c.points, 0);
+  $('#twRubricNote').textContent = (r.list.length ? r.list.length + '観点・満点 ' + total + '点。' : 'ルーブリックを入れてください。') +
+    (r.bad.length ? '読み取れない行があります(「観点 | 配点 | 基準」の形で、配点は数字): ' + r.bad[0] : '') + (r.over ? '観点は8つまでです。' : '') +
+    ' この課題用に直しても、ルーブリックのシートは変わりません。';
+  $('#twTarget').max = total || 100;
+  $('#twTargetUnit').textContent = '点以上で目標達成(満点 ' + total + '点)';
+  const min = Number($('#twMin').value) || 0, max = Number($('#twMax').value) || 0;
+  $('#twCount').textContent = [KIND_LABEL[tch.kind], min ? '語数 ' + wordsText({ min, max: max >= min ? max : 0 }) : '', tch.kind !== '英作文' ? splitParas($('#twText').value).length + '段落の本文' : ''].filter(Boolean).join(' · ');
+}
+$('#twNew').addEventListener('click', openTwForm);
+$('#twCancel').addEventListener('click', closeTwForm);
+$$('#twKind button').forEach((b) => b.addEventListener('click', () => setTwKind(b.dataset.kind)));
+$('#twRubricSel').addEventListener('change', (e) => {
+  const list = lib.rubrics.length ? lib.rubrics : Object.values(BUILTIN_RUBRICS);
+  const r = list[Number(e.target.value)];
+  if (e.target.value !== '' && r) $('#twRubric').value = rubricLines(r.criteria);
+  if (e.target.value === '') { $('#twRubric').value = ''; $('#twRubric').focus(); }
+  if (!tch.targetDirty) autoTarget();
+  updateTwCount();
+});
+$('#twRubric').addEventListener('input', () => { if (!tch.targetDirty) autoTarget(); updateTwCount(); });
+$('#twTarget').addEventListener('input', () => { tch.targetDirty = true; });
+['#twText', '#twMin', '#twMax', '#twPrompt'].forEach((s) => $(s).addEventListener('input', updateTwCount));
+$('#twLib').addEventListener('change', (e) => {
+  const o = twLibOptions(tch.kind).find((x) => x.v === e.target.value);
+  if (!o) return;
+  if (tch.kind === '英作文') {
+    const w = o.item;
+    $('#twTitle').value = w.q.split(/\s+/).slice(0, 8).join(' ') + (w.q.split(/\s+/).length > 8 ? '…' : '');
+    $('#twPrompt').value = w.q + (w.ja ? '\n' + w.ja : '');
+    const ws = parseWords(w.ja) || parseWords(w.q);
+    $('#twMin').value = ws ? ws.min : ''; $('#twMax').value = ws && ws.max ? ws.max : '';
+    $('#twModel').value = w.model || '';
+    $('#twModelBox').open = !!w.model;
+  } else if (o.v.startsWith('sh:')) {
+    $('#twTitle').value = o.item.name + '(書き取り)';
+    $('#twText').value = o.item.shadow.map((x) => x.en).join('\n');
+  } else {
+    $('#twTitle').value = o.item.title;
+    $('#twText').value = o.item.paras.map((p) => p.en).join('\n\n');
+    if (tch.kind !== 'ディクテーション') autoWords();
+  }
+  updateTwCount();
+});
+$('#twClasses').addEventListener('change', (e) => {
+  if (e.target.id !== 'twAll') return;
+  $$('#twClasses input').forEach((x) => { if (x.id !== 'twAll') { x.disabled = e.target.checked; if (e.target.checked) x.checked = false; } });
+});
+$('#twForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const st = $('#tStatus');
+  const kind = tch.kind, isDict = kind === 'ディクテーション';
+  const prompt = $('#twPrompt').value.trim(), text = $('#twText').value.trim();
+  const all = $('#twAll') && $('#twAll').checked;
+  const classes = $$('#twClasses input:checked').map((x) => x.value).filter((v) => v !== '全員');
+  if (kind === '英作文' && !prompt) { st.textContent = 'お題を入れてください。'; $('#twPrompt').focus(); return; }
+  if (kind !== '英作文' && !splitParas(text).length) { st.textContent = '本文の英文を入れてください。'; $('#twText').focus(); return; }
+  if (!isDict && !parseRubricLines($('#twRubric').value).list.length) { st.textContent = errText({ code: 'bad_rubric' }); return; }
+  if (!all && !classes.length) { st.textContent = '配信先のクラスを選んでください。'; return; }
+  const min = Number($('#twMin').value) || 0, max = Number($('#twMax').value) || 0;
+  $('#twSubmit').disabled = true;
+  st.textContent = '配信しています…';
+  try {
+    await gasCall('tWAssign', {
+      kind, title: $('#twTitle').value.trim(), prompt: isDict ? '' : prompt, text: kind === '英作文' ? '' : text,
+      words: isDict || !min ? '' : min + (max >= min ? '-' + max : ''), rubric: isDict ? '' : $('#twRubric').value,
+      target: Number($('#twTarget').value) || '', model: isDict ? '' : $('#twModel').value.trim(), classes: all ? [] : classes,
+    });
+    closeTwForm();
+    await loadOverview(true, '配信しました。生徒の「課題」タブに表示されます。');
+  } catch (err) {
+    handleAIError(err);
+    st.textContent = '配信できませんでした。' + errText(err);
+  } finally {
+    $('#twSubmit').disabled = false;
+  }
+});
+
+/* ---- ルーブリック ---- */
+function renderTR() {
+  const list = tch.data.rubrics || [];
+  $('#trList').innerHTML = list.length ? list.map((r) => '<article class="tcard"><div class="tcard-top"><h3>' + esc(r.name) + '</h3>' +
+    '<span class="state none">満点 ' + r.criteria.reduce((s, c) => s + c.points, 0) + '点</span></div>' +
+    '<table class="rtable"><thead><tr><th>観点</th><th>配点</th><th>基準</th></tr></thead><tbody>' +
+    r.criteria.map((c) => '<tr><td><b>' + esc(c.name) + '</b></td><td class="pts">' + c.points + '</td><td>' + esc(c.desc) + '</td></tr>').join('') + '</tbody></table>' +
+    '<div class="actions"><button type="button" class="mini" data-tr="edit" data-name="' + esc(r.name) + '">編集</button>' +
+    '<button type="button" class="mini" data-tr="copy" data-name="' + esc(r.name) + '">複製して作る</button>' +
+    '<button type="button" class="mini" data-tr="delete" data-name="' + esc(r.name) + '">削除</button></div></article>').join('')
+    : '<div class="empty-card"><p><b>ルーブリックがありません。</b></p><p class="fine">上のフォームで作ると、課題の配信や、生徒の自由練習の採点に使われます。</p></div>';
+  $('#trList').insertAdjacentHTML('beforeend', '<p class="fine">名前に「英作文」「要約」「感想」を含むルーブリックが、生徒の自由練習(課題でない練習)の採点に使われます。ないときは一番上のルーブリックを使います。スプレッドシートの「ルーブリック」シートでも直せます。</p>');
+}
+function updateTrSum() {
+  const r = parseRubricLines($('#trLines').value);
+  $('#trSum').textContent = (r.list.length ? r.list.length + '観点・満点 ' + r.list.reduce((s, c) => s + c.points, 0) + '点。' : '') +
+    (r.bad.length ? '読み取れない行: ' + r.bad[0] : '') + (r.over ? ' 観点は8つまでです。' : '');
+}
+function resetTrForm() {
+  tch.rubricEdit = '';
+  $('#trForm').reset();
+  $('#trHead').textContent = 'ルーブリックを作る';
+  $('#trCancel').hidden = true;
+  updateTrSum();
+}
+$('#trLines').addEventListener('input', updateTrSum);
+$('#trCancel').addEventListener('click', resetTrForm);
+$('#trList').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-tr]');
+  if (!b) return;
+  const r = (tch.data.rubrics || []).find((x) => x.name === b.dataset.name);
+  if (!r) return;
+  if (b.dataset.tr === 'edit' || b.dataset.tr === 'copy') {
+    tch.rubricEdit = b.dataset.tr === 'edit' ? r.name : '';
+    $('#trName').value = b.dataset.tr === 'edit' ? r.name : r.name + ' のコピー';
+    $('#trLines').value = rubricLines(r.criteria);
+    $('#trHead').textContent = b.dataset.tr === 'edit' ? '「' + r.name + '」を編集する' : 'ルーブリックを作る';
+    $('#trCancel').hidden = false;
+    updateTrSum();
+    $('#trForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    $('#trName').focus();
+    return;
+  }
+  if (!armOnce('rdel:' + r.name, b)) return;
+  b.disabled = true;
+  try {
+    const res = await gasCall('tRubricDelete', { name: r.name });
+    tch.data.rubrics = lib.rubrics = res.rubrics;
+    lib.defaults = defaultsFromList(lib.rubrics);
+    $('#tStatus').textContent = '「' + r.name + '」を削除しました。配信済みの課題には、配信したときのルーブリックが残っています。';
+    renderTeacher();
+  } catch (err) { handleAIError(err); $('#tStatus').textContent = errText(err); b.disabled = false; }
+});
+$('#trForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = $('#trName').value.trim();
+  const st = $('#tStatus');
+  if (!name) { st.textContent = 'ルーブリックの名前を入れてください。'; $('#trName').focus(); return; }
+  if (!parseRubricLines($('#trLines').value).list.length) { st.textContent = errText({ code: 'bad_rubric' }); return; }
+  $('#trSave').disabled = true;
+  st.textContent = '保存しています…';
+  try {
+    const r = await gasCall('tRubricSave', { name, lines: $('#trLines').value, old: tch.rubricEdit });
+    tch.data.rubrics = lib.rubrics = r.rubrics;
+    lib.defaults = defaultsFromList(lib.rubrics);
+    wst.set('rubrics', lib.rubrics); wst.set('defaults', lib.defaults);
+    st.textContent = '「' + name + '」を保存しました。';
+    resetTrForm();
+    renderTeacher();
+  } catch (err) { handleAIError(err); st.textContent = '保存できませんでした。' + errText(err); } finally { $('#trSave').disabled = false; }
+});
+
+/* ---- お題(ライブラリ) ---- */
+function tlItems() {
+  const set = $('#tlSet').value.trim();
+  return $('#tlLines').value.split('\n').map((l) => l.split(/\t|\s*\|\s*/).map((x) => x.trim())).filter((c) => c[0])
+    .map((c) => ({ set, mode: '英作文お題', en: c[0], ja: c[1] || '', extra: c.slice(2).join(' | ') }));
+}
+$('#tlLines').addEventListener('input', () => { const n = tlItems().length; $('#tlCount').textContent = n ? n + '題を登録します。' : ''; });
+$('#tlForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const st = $('#tStatus');
+  if (!$('#tlSet').value.trim()) { st.textContent = 'セット名を入れてください(例: Unit 7)。'; return; }
+  const items = tlItems();
+  if (!items.length) { st.textContent = 'お題を1行に1つ入れてください。'; return; }
+  $('#tlSubmit').disabled = true;
+  st.textContent = '登録しています…';
+  try {
+    const r = await gasCall('tAddLibrary', { items });
+    $('#tlLines').value = ''; $('#tlCount').textContent = '';
+    st.textContent = r.written + '題をライブラリに登録しました。生徒の「英作文」タブに出ます(生徒は「ライブラリを読み込み直す」で更新できます)。';
+    await loadLibrary(true);
+  } catch (err) { handleAIError(err); st.textContent = '登録できませんでした。' + errText(err); } finally { $('#tlSubmit').disabled = false; }
+});
+function renderTL() {
+  const sets = lib.sets;
+  $('#tlList').innerHTML = '<div class="tform"><h3>ライブラリのセット</h3>' + (sets.length ? sets.map((x) => {
+    const bits = [];
+    if ((x.write || []).length) bits.push('英作文のお題 ' + x.write.length);
+    if (x.passages.length) bits.push('長文 ' + x.passages.length + '(要約・感想・書き取りに使えます)');
+    if (x.shadow.length) bits.push('短文 ' + x.shadow.length + '(書き取りに使えます)');
+    return bits.length ? '<div class="set-row"><b>' + esc(x.name) + '</b><span class="fine">' + bits.join(' · ') + '</span></div>' : '';
+  }).join('') : '<p class="fine">' + (lib.loading ? '読み込んでいます…' : 'まだ何も登録されていません。') + '</p>') +
+    '<p class="fine">長文と短文は、SpeakLoop の先生画面か、スプレッドシートの「練習文」シートで登録します(SpeakLoop と共通です)。直したり消したりするときも、「練習文」シートを編集してください。</p></div>';
+}
+
+/* ---- 生徒 ---- */
+function joinLink() { return location.origin + location.pathname + '?gas=' + encodeURIComponent(conn.url) + '&key=' + encodeURIComponent(conn.token); }
+function renderTS() {
+  $('#joinUrl').value = joinLink();
+  $('#joinNote').textContent = location.protocol === 'https:' ? '' : 'いまはファイルから開いているため、このリンクは使えません。GitHub Pages の URL で開くと、正しいリンクになります。';
+  const cs = tch.data.classes || [], act = tch.data.activity || {};
+  $('#tsList').innerHTML = cs.length ? cs.map((c) => '<div class="tform"><div class="cls-head"><h3>' + esc(c.name) + '</h3><span class="fine">' + c.students.length + '人</span></div>' +
+    '<div class="tbl-wrap"><table class="ptable"><thead><tr><th>番号</th><th>名前</th><th>直近7日</th><th>最後</th><th>書き直しの平均</th><th>書き取りの平均</th><th></th></tr></thead><tbody>' +
+    c.students.map((st) => {
+      const a = act[st.id] || {};
+      return '<tr><td class="num">' + (st.no != null ? st.no : '') + '</td><td>' + esc(st.name) + '</td>' +
+        '<td class="num">' + (a.last7 || 0) + ' 件</td><td class="' + (a.last ? '' : 'muted') + '">' + (a.last ? fmtDay(a.last) : 'まだ') + '</td>' +
+        '<td class="num"' + (a.writeAvg != null ? ' data-s="' + pctBand(a.writeAvg) + '"' : '') + '>' + (a.writeAvg != null ? a.writeAvg + '%' : '—') + '</td>' +
+        '<td class="num"' + (a.dictAvg != null ? ' data-s="' + pctBand(a.dictAvg) + '"' : '') + '>' + (a.dictAvg != null ? a.dictAvg + '%' : '—') + '</td>' +
+        '<td><button type="button" class="mini" data-rm="' + esc(st.id) + '">名簿から外す</button></td></tr>';
+    }).join('') + '</tbody></table></div></div>').join('')
+    : '<div class="empty-card"><p><b>名簿にまだ生徒がいません。</b></p><p class="fine">上のフォームでクラスと名前を追加すると、生徒はログイン画面で自分の名前を選べるようになります。名簿は SpeakLoop と共通です。</p></div>';
+}
+$('#tsList').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-rm]');
+  if (!b || !armOnce('rm:' + b.dataset.rm, b, 'もう一度押すと外す')) return;
+  b.disabled = true;
+  try {
+    const r = await gasCall('tRemoveStudent', { sid: b.dataset.rm });
+    tch.data.classes = r.classes;
+    $('#tStatus').textContent = '名簿から外しました(SpeakLoop からも外れます)。これまでの記録はスプレッドシートに残っています。';
+    renderTeacher();
+  } catch (err) { handleAIError(err); $('#tStatus').textContent = errText(err); b.disabled = false; }
+});
+$('#tsForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const cls = $('#tsClass').value.trim();
+  const lines = $('#tsNames').value.split('\n').map((x) => x.trim()).filter(Boolean);
+  const st = $('#tStatus');
+  if (!cls) { st.textContent = 'クラス名を入れてください。'; return; }
+  if (!lines.length) { st.textContent = '名前を1行に1人ずつ入れてください。'; return; }
+  $('#tsSubmit').disabled = true;
+  st.textContent = '追加しています…';
+  try {
+    const r = await gasCall('tAddStudents', { cls, lines });
+    tch.data.classes = r.classes;
+    st.textContent = r.added + '人を ' + cls + ' に追加しました。' + (r.skipped ? '同じ名前の ' + r.skipped + '人はすでにいるため追加しませんでした。' : '');
+    $('#tsNames').value = '';
+    server.classMode = true;
+    store.set('server', server);
+    renderTeacher();
+  } catch (err) { handleAIError(err); st.textContent = '追加できませんでした。' + errText(err); } finally { $('#tsSubmit').disabled = false; }
+});
+$('#joinCopy').addEventListener('click', async () => {
+  const input = $('#joinUrl');
+  try { await navigator.clipboard.writeText(input.value); $('#joinCopy').textContent = 'コピーしました'; }
+  catch (e) { input.select(); $('#joinCopy').textContent = '選択しました。コピーしてください'; }
+  setTimeout(() => { $('#joinCopy').textContent = 'コピー'; }, 2500);
+});
+$('#joinQrBtn').addEventListener('click', () => {
+  const box = $('#joinQr');
+  const show = box.hidden;
+  box.hidden = !show;
+  $('#joinQrBtn').setAttribute('aria-expanded', String(show));
+  if (!show) return;
+  box.innerHTML = '';
+  if (window.QRCode) {
+    try { new window.QRCode(box, { text: joinLink(), width: 220, height: 220, colorDark: '#000000', colorLight: '#ffffff', correctLevel: window.QRCode.CorrectLevel.M }); }
+    catch (e) { box.textContent = 'QRコードを作れませんでした。リンクをコピーして配ってください。'; }
+  } else box.textContent = 'QRコードの部品を読み込めませんでした。リンクをコピーして配ってください。';
+});
+
+/* ================= boot ================= */
+renderWho();
+renderAssignments();
+renderSources();
+const startTab = TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : wst.get(ukey('tab'), defaultTab());
+showTab(startTab, true);
+updateAIUI();
+if (aiUsable() && server.classMode && !who) openLogin();
+refreshServer();
+flushDict();
+})();
+</script>
+</body>
+</html>
