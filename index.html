@@ -1294,20 +1294,39 @@ function joinPieces(pieces) {
   return out.join(' ');
 }
 const FATAL_MIC = ['not-allowed', 'service-not-allowed', 'audio-capture', 'network', 'language-not-supported'];
-function listen({ continuous, persist, onInterim, onDone }) {
+/*
+ * silenceMs: stop once the words have not changed for this long after the learner started speaking.
+ * noSpeechMs: stop if nothing at all is heard for this long.
+ * Chrome ends a non-continuous recognition by itself after a pause, but Safari on iPhone keeps listening,
+ * and sometimes never reports the end even after stop(), so the page keeps its own clock for both.
+ */
+function listen({ continuous, persist, silenceMs, noSpeechMs, onInterim, onDone }) {
   if (activeRec) activeRec.abort();
   TTS.stop();
   const t0 = performance.now();
   const segs = []; // text from earlier recognition sessions (persist mode)
   let finals = [], interim = '', first = null, last = null, error = null, ended = false, stopped = false, current = null;
+  let lastText = '', lastChange = null, forceT = 0, quickEmpty = 0, sessionStart = 0, sessionHeard = false;
   const text = () => joinPieces(segs.concat(finals.filter(Boolean), [interim]));
-  const handle = {
-    stop() { stopped = true; try { current && current.stop(); } catch (e) { /* ignore */ } },
-    abort() { stopped = true; try { current && current.abort(); } catch (e) { /* ignore */ } },
+  const forceFinish = () => {
+    // If the browser never reports the end (seen on iPhone), finish with what was heard so far.
+    clearTimeout(forceT);
+    forceT = setTimeout(() => { if (!ended) { try { current && current.abort(); } catch (e) { /* ignore */ } finish(); } }, 1500);
   };
+  const handle = {
+    stop() { stopped = true; try { current && current.stop(); } catch (e) { /* ignore */ } forceFinish(); },
+    abort() { stopped = true; try { current && current.abort(); } catch (e) { /* ignore */ } forceFinish(); },
+  };
+  const watch = setInterval(() => {
+    if (ended || stopped) return;
+    const now = performance.now();
+    if (lastChange != null ? (silenceMs && now - lastChange > silenceMs) : (noSpeechMs && now - t0 > noSpeechMs)) handle.stop();
+  }, 200);
   function finish() {
     if (ended) return;
     ended = true;
+    clearInterval(watch);
+    clearTimeout(forceT);
     if (activeRec === handle) activeRec = null;
     if (!error || error === 'no-speech') {
       // the mic worked; clear a warning left over from an earlier refusal
@@ -1322,6 +1341,7 @@ function listen({ continuous, persist, onInterim, onDone }) {
     rec.continuous = !!continuous;
     rec.maxAlternatives = 1;
     finals = []; interim = '';
+    sessionStart = performance.now(); sessionHeard = false;
     rec.onresult = (e) => {
       interim = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -1331,7 +1351,10 @@ function listen({ continuous, persist, onInterim, onDone }) {
       const now = performance.now();
       if (first == null) first = now;
       last = now;
-      if (onInterim) onInterim(text());
+      sessionHeard = true;
+      const t = text();
+      if (t !== lastText) { lastText = t; lastChange = now; }
+      if (onInterim) onInterim(t);
     };
     rec.onerror = (e) => {
       error = e.error;
@@ -1345,8 +1368,10 @@ function listen({ continuous, persist, onInterim, onDone }) {
       const said = joinPieces(finals.filter(Boolean).concat([interim]));
       if (said) segs.push(said);
       finals = []; interim = '';
+      // A browser that ends every session at once, hearing nothing, would otherwise restart forever.
+      quickEmpty = !sessionHeard && performance.now() - sessionStart < 1500 ? quickEmpty + 1 : 0;
       // Browsers end recognition after a pause; in persist mode keep going until the learner presses stop.
-      if (persist && !stopped && !FATAL_MIC.includes(error) && performance.now() - t0 < 5 * 60 * 1000) {
+      if (persist && !stopped && quickEmpty < 3 && !FATAL_MIC.includes(error) && performance.now() - t0 < 5 * 60 * 1000) {
         error = null;
         try { startOne(); return; } catch (err) { /* fall through */ }
       }
@@ -1358,6 +1383,7 @@ function listen({ continuous, persist, onInterim, onDone }) {
   activeRec = handle;
   try { startOne(); } catch (err) {
     ended = true; activeRec = null;
+    clearInterval(watch);
     setTimeout(() => onDone({ text: '', error: 'start-failed' }), 0);
   }
   return handle;
@@ -1424,6 +1450,8 @@ function AnswerBar(mount, opts) {
     rec = listen({
       continuous: typeof opts.continuous === 'function' ? opts.continuous() : opts.continuous,
       persist: typeof opts.persist === 'function' ? opts.persist() : !!opts.persist,
+      silenceMs: typeof opts.silenceMs === 'function' ? opts.silenceMs() : opts.silenceMs,
+      noSpeechMs: typeof opts.noSpeechMs === 'function' ? opts.noSpeechMs() : opts.noSpeechMs,
       onInterim: (t) => {
         if (my !== gen) return;
         setLive(t || '聞いています…', 'listening');
@@ -1750,8 +1778,8 @@ window.addEventListener('hashchange', () => showTab(location.hash.slice(1), true
 const talk = { scenario: SCENARIOS[0], turns: [], hints: [], busy: false, ctl: null };
 const chat = $('#chat');
 const talkBar = AnswerBar($('#talkAnswer'), {
-  id: 'talk', continuous: true,
-  idleText: 'マイクを押して英語で返事をしましょう。話し終えたらもう一度押します。',
+  id: 'talk', continuous: true, silenceMs: 4000, noSpeechMs: 15000,
+  idleText: 'マイクを押して英語で返事をしましょう。話し終えて4秒ほどたつと自動で送ります(すぐ送るときは、もう一度押します)。',
   onSubmit: (text, meta) => onTalkSubmit(text, meta),
 });
 
@@ -2127,7 +2155,7 @@ const band = (s) => (s >= 85 ? 'good' : s >= 60 ? 'warn' : 'miss');
 /* ================= mode 2: reading & shadowing ================= */
 const shadow = { src: 'set', idx: 0, aiItems: [], best: {}, showJa: false, hideEn: false, ctl: null };
 const shadowBar = AnswerBar($('#shadowAnswer'), {
-  id: 'shadow', continuous: false,
+  id: 'shadow', continuous: false, silenceMs: 1500, noSpeechMs: 8000,
   idleText: 'お手本を聞いたら、マイクを押して同じ文を読み上げましょう。',
   onSubmit: (text, meta) => gradeShadow(text, meta),
 });
@@ -2364,6 +2392,8 @@ const pasBar = AnswerBar($('#pasAnswer'), {
   id: 'pas',
   continuous: true,
   persist: () => pas.unit === 'para',
+  silenceMs: () => (pas.unit === 'para' ? 4000 : 2000),
+  noSpeechMs: 10000,
   idleText: 'マイクを押して読みましょう。',
   autoStop: (t) => {
     const para = currentPassage().paras[pas.para];
@@ -2436,8 +2466,8 @@ function renderPasAll() {
   $('#pasResult').hidden = true;
   $('#pasResult').innerHTML = '';
   pasBar.reset(isPara
-    ? 'マイクを押して、この段落を最後まで読みましょう。途中で間があいても聞き続け、最後の語まで読むと自動で止まります。'
-    : 'マイクを押して、ハイライトの1文を読みましょう。文の最後まで読むと自動で止まります。');
+    ? 'マイクを押して、この段落を最後まで読みましょう。最後の語まで読むか、4秒ほど黙ると自動で止まります。'
+    : 'マイクを押して、ハイライトの1文を読みましょう。文の最後まで読むか、少し黙ると自動で止まります。');
   refreshPasMarks();
 }
 function renderPasFlags() {
@@ -2751,6 +2781,7 @@ const quick = { type: 'ja2en', src: 'std', idx: 0, state: 'idle', t0: 0, raf: 0,
 const quickBar = AnswerBar($('#quickAnswer'), {
   // Q&A answers run several sentences, so keep listening until the learner presses stop
   id: 'quick', continuous: () => quick.type === 'qa',
+  silenceMs: () => (quick.type === 'qa' ? 4000 : 1500), // no-speech is covered by the round's timer
   idleText: 'スタートを押すと、すぐにマイクが聞き始めます。',
   onStart: () => { if (quick.state === 'idle') beginRound(false); },
   onSubmit: (text, meta) => onQuickAnswer(text, meta),
@@ -2828,7 +2859,7 @@ function resetQuick() {
     ? 'スタートを押すと質問が読み上げられ、続けてタイマーとマイクが動きます(' + QUICK_SEC.qa + '秒)'
     : 'スタートを押すとタイマーとマイクが同時に動きます(' + QUICK_SEC.ja2en + '秒)';
   $('#quickReveal').disabled = false;
-  quickBar.reset(isQA ? '質問を聞いたら、すぐに答え始めましょう。話し終えたらマイクを押して止めます。' : 'スタートを押すと、すぐにマイクが聞き始めます。');
+  quickBar.reset(isQA ? '質問を聞いたら、すぐに答え始めましょう。話し終えて4秒ほどたつと自動で止まります。' : 'スタートを押すと、すぐにマイクが聞き始めます。');
   $('#quickDots').innerHTML = items.map((_, i) => {
     const v = quick.scores[quickKey(i)];
     const s = v == null ? '' : v >= 4 ? 'good' : v >= 3 ? 'warn' : 'miss';
