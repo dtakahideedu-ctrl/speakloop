@@ -1273,6 +1273,26 @@ function showMicNotice(force) {
 }
 $('#micNoticeClose').addEventListener('click', () => { micNoticeDismissed = true; $('#micNotice').hidden = true; });
 
+/*
+ * Joins recognition pieces without repeats. Android Chrome (and some other browsers) re-send the whole phrase
+ * so far as each new "final" result ("I", "I usually", "I usually walk"), so plain concatenation repeats words.
+ */
+const normPiece = (t) => String(t || '').toLowerCase().replace(/[^a-z0-9' ]+/g, ' ').replace(/\s+/g, ' ').trim();
+function joinPieces(pieces) {
+  const out = [];
+  pieces.forEach((raw) => {
+    const p = String(raw || '').replace(/\s+/g, ' ').trim();
+    const np = normPiece(p);
+    if (!np) return;
+    const all = normPiece(out.join(' '));
+    if (all && (np === all || np.startsWith(all + ' '))) { out.length = 0; out.push(p); return; } // repeats everything so far, then adds more
+    const last = out.length ? normPiece(out[out.length - 1]) : '';
+    if (last && (np === last || np.startsWith(last + ' '))) { out[out.length - 1] = p; return; } // grows the last phrase
+    if (last && (all.endsWith(' ' + np) || all === np)) return; // only repeats what we already have
+    out.push(p);
+  });
+  return out.join(' ');
+}
 const FATAL_MIC = ['not-allowed', 'service-not-allowed', 'audio-capture', 'network', 'language-not-supported'];
 function listen({ continuous, persist, onInterim, onDone }) {
   if (activeRec) activeRec.abort();
@@ -1280,7 +1300,7 @@ function listen({ continuous, persist, onInterim, onDone }) {
   const t0 = performance.now();
   const segs = []; // text from earlier recognition sessions (persist mode)
   let finals = [], interim = '', first = null, last = null, error = null, ended = false, stopped = false, current = null;
-  const text = () => (segs.join(' ') + ' ' + finals.filter(Boolean).join(' ') + ' ' + interim).replace(/\s+/g, ' ').trim();
+  const text = () => joinPieces(segs.concat(finals.filter(Boolean), [interim]));
   const handle = {
     stop() { stopped = true; try { current && current.stop(); } catch (e) { /* ignore */ } },
     abort() { stopped = true; try { current && current.abort(); } catch (e) { /* ignore */ } },
@@ -1322,7 +1342,7 @@ function listen({ continuous, persist, onInterim, onDone }) {
     };
     rec.onend = () => {
       if (current !== rec) return;
-      const said = (finals.filter(Boolean).join(' ') + ' ' + interim).trim();
+      const said = joinPieces(finals.filter(Boolean).concat([interim]));
       if (said) segs.push(said);
       finals = []; interim = '';
       // Browsers end recognition after a pause; in persist mode keep going until the learner presses stop.
