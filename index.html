@@ -366,6 +366,18 @@ a.mini { text-decoration: none; }
 .tips .h { font: 400 var(--fs-xs) var(--font-body); color: var(--ink-2); }
 .tips .t { font-size: var(--fs-sm); }
 
+/* interview */
+.iv-text { display: grid; gap: 10px; padding: 12px 14px; border-radius: 10px; background: var(--bg); max-height: 46vh; overflow: auto; }
+.iv-text p { margin: 0; font: 400 16px/1.65 var(--font-read); overflow-wrap: anywhere; }
+.iv-text h4 { margin: 4px 0 0; font-size: var(--fs-xs); color: var(--ink-2); letter-spacing: 0.04em; }
+.iv-sum { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.iv-sum li { display: grid; gap: 4px; padding-top: 12px; border-top: 1px solid var(--line); }
+.iv-sum li:first-child { border-top: 0; padding-top: 0; }
+.iv-sum .q { font: 600 16px/1.45 var(--font-read); overflow-wrap: anywhere; }
+.iv-sum .a { font: 400 15px/1.5 var(--font-read); color: var(--ink-2); overflow-wrap: anywhere; }
+.iv-sum .b { font: 600 15px/1.5 var(--font-read); overflow-wrap: anywhere; }
+.iv-react { margin: 0; font: 400 18px/1.5 var(--font-read); }
+
 /* identity + login */
 .who-pill { color: var(--ink); font-weight: 700; }
 .login { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 20px; display: grid; gap: 14px; box-shadow: var(--shadow); }
@@ -660,6 +672,7 @@ body.gated .toolbar, body.gated .panel, body.gated .foot { display: none !import
       <button type="button" role="tab" id="tabbtn-shadow" aria-controls="tab-shadow" data-tab="shadow" aria-selected="false"><span class="lg">短文音読</span><span class="sm">短文</span></button>
       <button type="button" role="tab" id="tabbtn-passage" aria-controls="tab-passage" data-tab="passage" aria-selected="false"><span class="lg">長文音読</span><span class="sm">長文</span></button>
       <button type="button" role="tab" id="tabbtn-quick" aria-controls="tab-quick" data-tab="quick" aria-selected="false"><span class="lg">瞬間英作文</span><span class="sm">英作文</span></button>
+      <button type="button" role="tab" id="tabbtn-interview" aria-controls="tab-interview" data-tab="interview" aria-selected="false">インタビュー</button>
       <button type="button" role="tab" id="tabbtn-log" aria-controls="tab-log" data-tab="log" aria-selected="false">記録</button>
       <button type="button" role="tab" id="tabbtn-teacher" aria-controls="tab-teacher" data-tab="teacher" aria-selected="false" hidden>先生</button>
     </div>
@@ -793,6 +806,7 @@ body.gated .toolbar, body.gated .panel, body.gated .foot { display: none !import
       <div class="card-tools">
         <button type="button" class="mini" id="pasJaBtn" aria-pressed="false">訳を表示</button>
         <button type="button" class="mini" id="pasHideBtn" aria-pressed="false">英文を隠す</button>
+        <button type="button" class="mini" id="pasInterview">この英文でインタビュー</button>
         <span class="counter pas-counter" id="pasCounter"></span>
       </div>
     </article>
@@ -859,6 +873,49 @@ body.gated .toolbar, body.gated .panel, body.gated .foot { display: none !import
       <button type="button" class="btn" id="quickReveal">答えを見る</button>
       <button type="button" class="btn" id="quickNext">次の問題</button>
     </div>
+  </section>
+
+  <!-- ===== インタビュー ===== -->
+  <section class="panel" id="tab-interview" role="tabpanel" aria-labelledby="tabbtn-interview" hidden>
+    <div class="pas-src">
+      <label class="sr-only" for="ivSel">インタビューのもとにする英文</label>
+      <select id="ivSel" class="my-sel pas-sel"></select>
+      <div class="actions"><button type="button" class="mini" id="ivReload">ライブラリを読み込み直す</button></div>
+      <p class="fine pas-note" id="ivNote"></p>
+    </div>
+    <div class="ai-off" id="ivAiOff" hidden>
+      <p id="ivAiOffText"></p>
+      <div><button type="button" class="mini" id="ivAiOffOpen">設定を開く</button></div>
+    </div>
+    <div class="dots" id="ivDots" aria-label="各質問の評価"></div>
+    <article class="card" id="ivCard">
+      <div class="pcard-head">
+        <span class="eyebrow" id="ivEyebrow">インタビュー</span>
+        <div class="card-tools">
+          <button type="button" class="mini" id="ivHideBtn" aria-pressed="false">質問の文字を隠す</button>
+          <button type="button" class="mini" id="ivJaBtn" aria-pressed="false">訳</button>
+          <button type="button" class="mini" id="ivTextBtn" aria-pressed="false">本文を見る</button>
+        </div>
+      </div>
+      <p class="prompt en-q" id="ivQ"></p>
+      <p class="ja" id="ivJa" hidden></p>
+      <div class="iv-text" id="ivText" hidden></div>
+      <div class="listen-row" id="ivListen" hidden>
+        <button type="button" class="btn primary" id="ivPlay"></button>
+        <div class="rate-chips" role="group" aria-label="質問の速さ">
+          <button type="button" data-rate="0.7">0.7x</button>
+          <button type="button" data-rate="0.85">0.85x</button>
+          <button type="button" data-rate="1">1.0x</button>
+        </div>
+      </div>
+    </article>
+    <div class="actions" id="ivStartRow">
+      <button type="button" class="btn primary big" id="ivStart">インタビューを始める</button>
+      <button type="button" class="btn" id="ivRenew">新しい質問を作る</button>
+    </div>
+    <p class="fine" id="ivStatus" aria-live="polite"></p>
+    <div id="ivAnswer"></div>
+    <div class="result" id="ivResult" hidden aria-live="polite"></div>
   </section>
 
   <!-- ===== 記録 ===== -->
@@ -1575,6 +1632,7 @@ function AnswerBar(mount, opts) {
       persist: typeof opts.persist === 'function' ? opts.persist() : !!opts.persist,
       silenceMs: typeof opts.silenceMs === 'function' ? opts.silenceMs() : opts.silenceMs,
       noSpeechMs: typeof opts.noSpeechMs === 'function' ? opts.noSpeechMs() : opts.noSpeechMs,
+      maxMs: typeof opts.maxMs === 'function' ? opts.maxMs() : opts.maxMs,
       onInterim: (t) => {
         if (my !== gen) return;
         setLive(t || '聞いています…', 'listening');
@@ -1795,7 +1853,8 @@ function updateAIUI() {
   renderMyControls();
   renderPasSrc();
   renderWho();
-  if (aiUsable() && !my.loaded && (shadow.src === 'my' || quick.src === 'my' || currentTab === 'passage')) loadMySets();
+  if (ivReady) renderInterview();
+  if (aiUsable() && !my.loaded && (shadow.src === 'my' || quick.src === 'my' || currentTab === 'passage' || currentTab === 'interview')) loadMySets();
   if (currentTab === 'log') loadStats();
 }
 
@@ -1946,10 +2005,11 @@ $$('#levelSeg button').forEach((b) => b.addEventListener('click', () => {
   settings.level = b.dataset.level; saveSettings(); renderLevel();
   shadow.idx = 0; if (shadow.src === 'set') renderShadow();
   quick.idx = 0; resetQuick();
+  ivBar.abort(); TTS.stop(); renderInterview();
 }));
 
 /* ================= tabs ================= */
-const TABS = ['assign', 'talk', 'shadow', 'passage', 'quick', 'log', 'teacher'];
+const TABS = ['assign', 'talk', 'shadow', 'passage', 'quick', 'interview', 'log', 'teacher'];
 const tabVisible = (t) => !$('#tabbtn-' + t).hidden;
 const defaultTab = () => (who && who.role === 'student' ? 'assign' : who && who.role === 'teacher' ? 'teacher' : 'talk');
 var currentTab = 'talk'; // var: read by updateAIUI, which can run before this line on boot
@@ -1957,7 +2017,7 @@ function showTab(name, fromHash) {
   if (!TABS.includes(name) || !tabVisible(name)) name = defaultTab();
   if (name !== currentTab) {
     TTS.stop();
-    talkBar.abort(); shadowBar.abort(); quickBar.abort(); pasBar.abort();
+    talkBar.abort(); shadowBar.abort(); quickBar.abort(); pasBar.abort(); ivBar.abort();
     if (quick.state === 'running' || quick.state === 'prompting') resetQuick();
   }
   currentTab = name;
@@ -1967,7 +2027,8 @@ function showTab(name, fromHash) {
   });
   store.set(ukey('tab'), name);
   if (name === 'log') loadStats();
-  if (name === 'passage' && aiUsable() && !my.loaded) loadMySets();
+  if ((name === 'passage' || name === 'interview') && aiUsable() && !my.loaded) loadMySets();
+  if (name === 'interview') renderInterview();
   if (name === 'assign') loadAssignments(true);
   if (name === 'teacher') loadOverview();
   if (!fromHash && location.hash !== '#' + name) { try { history.replaceState(null, '', '#' + name); } catch (e) { /* ignore */ } }
@@ -2293,11 +2354,13 @@ async function loadMySets(force) {
     const before = pas.id;
     rebuildPassages();
     if (pas.id === before) { renderPasSelect(); renderPasSrc(); refreshPasMarks(); } else renderPasAll();
+    if (ivReady) renderInterview();
   } catch (e) {
     my.loading = false;
     handleAIError(e);
     renderMyControls('読み込めませんでした。' + errText(e));
     renderPasSrc('ライブラリを読み込めませんでした。' + errText(e));
+    if (ivReady) renderInterview();
   }
 }
 
@@ -3272,8 +3335,304 @@ $('#quickReveal').addEventListener('click', () => {
 });
 $('#quickNext').addEventListener('click', () => { const n = quickItems().length; if (!n) return; quick.idx = (quick.idx + 1) % n; resetQuick(); });
 
+/* ================= mode 5: interview about a text the learner read aloud ================= */
+var ivReady = false; // var: updateAIUI and the library loader may run before this section on boot
+const IV_N = 5;
+const IV_LEVEL = {
+  beginner: {
+    ask: 'Ask simple factual questions whose answers are stated directly in the text (who, what, where, when, how many, yes/no + one detail). Use short, easy words. A good answer is one short sentence.',
+    expect: 'one short sentence; a short phrase with the right content is acceptable',
+    silence: 2500,
+  },
+  intermediate: {
+    ask: 'Ask about reasons, causes, steps and comparisons in the text (why, how, what happened after, what is the difference). The learner should answer in their own words in 1-2 sentences.',
+    expect: '1-2 sentences in the learner\'s own words',
+    silence: 3500,
+  },
+  advanced: {
+    ask: 'Start with one question about the main point of the text, then go beyond it: the learner\'s opinion with a reason, inferences, "what if" questions, and connections to the learner\'s own life or to Japan. The learner should answer in 2-3 sentences with a reason.',
+    expect: '2-3 sentences with a clear reason',
+    silence: 4500,
+  },
+};
+const iv = { src: store.get(ukey('ivSrc'), ''), sessions: store.get(ukey('ivSessions'), {}), showJa: false, hideQ: false, showText: false, busy: false, ctl: null };
+if (!iv.sessions || typeof iv.sessions !== 'object') iv.sessions = {};
+const ivBar = AnswerBar($('#ivAnswer'), {
+  id: 'iv', continuous: true, persist: true,
+  silenceMs: () => (IV_LEVEL[settings.level] || IV_LEVEL.intermediate).silence,
+  noSpeechMs: 15000, maxMs: 90000,
+  idleText: '質問を聞いたら、マイクを押して英語で答えましょう。',
+  onSubmit: (text, meta) => ivAnswer(text, meta),
+});
+$('#ivPlay').innerHTML = ICON.play + '質問をもう一度聞く';
+
+/** Texts to interview about: assignments, library sets as a whole (a Part or Review) and each passage, pasted texts. */
+function ivSources() {
+  const out = [];
+  const add = (id, group, label, title, text) => { if (text.trim()) out.push({ id, group, label, title, text: text.slice(0, 12000) }); };
+  const ptext = (p) => p.paras.map((x) => x.en).join('\n\n');
+  pas.list.filter((p) => p.source === 'assign').forEach((p) => add('p:' + p.id, '課題', p.title, p.title, ptext(p)));
+  (my.sets || []).forEach((st) => {
+    const ps = pas.list.filter((p) => p.source === 'sheet' && p.setName === st.name);
+    const grp = 'ライブラリ: ' + st.name;
+    if (ps.length > 1) add('s:' + st.name, grp, st.name + ' 全体(長文 ' + ps.length + '本)', st.name, ps.map((p) => '[' + p.title + ']\n' + ptext(p)).join('\n\n'));
+    if (!ps.length && (st.shadow || []).length) add('s:' + st.name, grp, st.name + '(短文 ' + st.shadow.length + '文)', st.name, st.shadow.map((x) => x.en).join('\n'));
+    ps.forEach((p) => add('p:' + p.id, grp, p.title, p.title, ptext(p)));
+  });
+  pas.list.filter((p) => p.source === 'paste').forEach((p) => add('p:' + p.id, '貼り付けた英文', p.title, p.title, ptext(p)));
+  pas.list.filter((p) => p.source === 'sample').forEach((p) => add('p:' + p.id, 'サンプル', p.title, p.title, ptext(p)));
+  return out;
+}
+const ivSource = () => { const all = ivSources(); return all.find((x) => x.id === iv.src) || all[0] || null; };
+const ivKey = (src) => hashText(src.text) + ':' + settings.level;
+function ivSave() {
+  const keys = Object.keys(iv.sessions).sort((a, b) => (iv.sessions[b].at || 0) - (iv.sessions[a].at || 0));
+  keys.slice(30).forEach((k) => delete iv.sessions[k]);
+  store.set(ukey('ivSessions'), iv.sessions);
+}
+const ivSession = () => { const src = ivSource(); return src ? iv.sessions[ivKey(src)] || null : null; };
+
+function renderIvSelect() {
+  const sel = $('#ivSel'), all = ivSources();
+  const groups = [];
+  all.forEach((x) => { let g = groups.find((y) => y.name === x.group); if (!g) groups.push(g = { name: x.group, items: [] }); g.items.push(x); });
+  sel.innerHTML = groups.map((g) => '<optgroup label="' + esc(g.name) + '">' + g.items.map((x) => '<option value="' + esc(x.id) + '">' + esc(x.label) + '</option>').join('') + '</optgroup>').join('');
+  if (!all.some((x) => x.id === iv.src) && all[0]) iv.src = all[0].id;
+  sel.value = iv.src;
+  $('#ivNote').textContent = my.loading ? 'ライブラリを読み込んでいます…' : !aiUsable() ? '' :
+    (my.sets.length ? '音読した英文(Part ごとの長文や、セット全体)を選ぶと、AI がその内容について ' + IV_N + ' 問インタビューします。質問の難しさは、上の「レベル」で変わります。' : 'ライブラリに長文がまだありません。サンプルの英文や、長文音読で貼り付けた英文でも使えます。');
+  $('#ivReload').hidden = !aiUsable();
+  $('#ivReload').disabled = my.loading;
+}
+
+function ivTextHTML(src) {
+  return src.text.split(/\n\s*\n/).map((p) => {
+    const m = p.match(/^\[(.+)\]\n([\s\S]*)$/);
+    return m ? '<h4>' + esc(m[1]) + '</h4><p>' + esc(m[2]) + '</p>' : '<p>' + esc(p) + '</p>';
+  }).join('');
+}
+function renderInterview() {
+  renderIvSelect();
+  const src = ivSource(), S = ivSession();
+  const off = !aiUsable();
+  $('#ivAiOff').hidden = !off;
+  if (off) $('#ivAiOffText').textContent = AI.note ? errText({ code: AI.note }) : 'インタビューは AI が質問を作り、答えを採点します。設定で GAS に接続すると使えます。';
+  const lvJa = LEVELS[settings.level].ja;
+  const asking = !!(S && S.state !== 'done' && S.questions && S.questions.length);
+  const q = asking ? S.questions[S.idx] : null;
+  $('#ivEyebrow').textContent = !src ? 'インタビュー' : S && S.state === 'done' ? 'インタビューの結果 · ' + lvJa : q ? '質問 ' + (S.idx + 1) + ' / ' + S.questions.length + ' · ' + lvJa : 'インタビュー · ' + lvJa + ' · ' + IV_N + '問';
+  const qEl = $('#ivQ');
+  if (q) {
+    qEl.textContent = q.q;
+    qEl.classList.remove('empty');
+    qEl.classList.toggle('veiled', iv.hideQ);
+  } else {
+    qEl.classList.add('empty'); qEl.classList.remove('veiled');
+    qEl.textContent = !src ? 'インタビューに使う英文がありません。'
+      : S && S.state === 'done' ? '平均 ' + ivAvg(S) + ' / 5 でした。下で、質問ごとの答えと、よりよい答えを確かめましょう。'
+      : '「' + src.title + '」について、AI がインタビュアーになって ' + IV_N + ' 問質問します。質問を聞いて、英語で声に出して答えましょう。';
+  }
+  $('#ivJa').textContent = q ? q.ja || '' : '';
+  $('#ivJa').hidden = !q || !iv.showJa || !q.ja;
+  $('#ivJaBtn').hidden = !q || !q.ja;
+  $('#ivJaBtn').setAttribute('aria-pressed', String(iv.showJa));
+  $('#ivHideBtn').hidden = !q;
+  $('#ivHideBtn').setAttribute('aria-pressed', String(iv.hideQ));
+  $('#ivHideBtn').textContent = iv.hideQ ? '質問の文字を表示' : '質問の文字を隠す';
+  $('#ivTextBtn').hidden = !src;
+  $('#ivTextBtn').setAttribute('aria-pressed', String(iv.showText));
+  $('#ivTextBtn').textContent = iv.showText ? '本文を閉じる' : '本文を見る';
+  $('#ivText').hidden = !src || !iv.showText;
+  if (src && iv.showText) $('#ivText').innerHTML = ivTextHTML(src);
+  $('#ivListen').hidden = !q;
+  $('#ivStartRow').hidden = asking || !src;
+  $('#ivStart').textContent = S && S.state === 'done' ? '同じ質問でもう一度' : 'インタビューを始める';
+  $('#ivStart').disabled = off || iv.busy || !src;
+  $('#ivRenew').hidden = !(S && S.questions && S.questions.length);
+  $('#ivRenew').disabled = off || iv.busy;
+  ivBar.setDisabled(off || !q || iv.busy || (S && S.state === 'feedback'));
+  $('#ivAnswer').hidden = !asking;
+  $('#ivDots').innerHTML = S && S.questions ? S.questions.map((_, i) => {
+    const a = S.answers[i];
+    const st = a ? (a.score >= 4 ? 'good' : a.score >= 3 ? 'warn' : 'miss') : '';
+    return '<button type="button" data-i="' + i + '" aria-label="質問' + (i + 1) + (a ? ' 評価 ' + a.score : '') + '"' + (st ? ' data-s="' + st + '"' : '') + (asking && i === S.idx ? ' aria-current="true"' : '') + '></button>';
+  }).join('') : '';
+  renderIvResult();
+}
+const ivAvg = (S) => { const sc = S.answers.filter(Boolean).map((a) => a.score); return sc.length ? (sc.reduce((x, y) => x + y, 0) / sc.length).toFixed(1) : '—'; };
+
+function renderIvResult() {
+  const box = $('#ivResult'), S = ivSession();
+  if (!S || !S.questions || (S.state !== 'feedback' && S.state !== 'done')) { box.hidden = true; return; }
+  box.hidden = false;
+  const toPlay = [];
+  const play = (t) => { toPlay.push(t); return '<button type="button" class="mini" data-play="' + (toPlay.length - 1) + '">' + ICON.play + '聞く</button>'; };
+  if (S.state === 'done') {
+    box.innerHTML = '<span class="eyebrow">質問ごとの結果</span><ol class="iv-sum">' + S.questions.map((q, i) => {
+      const a = S.answers[i];
+      return '<li><span class="q">' + (i + 1) + '. ' + esc(q.q) + '</span>' +
+        (a ? '<span class="r-score" data-s="' + (a.score >= 4 ? 'good' : a.score >= 3 ? 'warn' : 'miss') + '">' + a.score + ' / 5 · ' + VERDICT[a.score] + '</span>' +
+          '<span class="a">あなた: ' + esc(a.text) + '</span>' + (a.better ? '<span class="b">よりよい答え: ' + esc(a.better) + ' ' + play(a.better) + '</span>' : '') : '<span class="a">(答えていません)</span>') + '</li>';
+    }).join('') + '</ol>';
+  } else {
+    const a = S.answers[S.idx], q = S.questions[S.idx];
+    if (!a) { box.hidden = true; return; }
+    const sc = a.score, s = sc >= 4 ? 'good' : sc >= 3 ? 'warn' : 'miss';
+    const last = S.idx >= S.questions.length - 1;
+    box.innerHTML = (a.reaction ? '<p class="iv-react">' + esc(a.reaction) + '</p>' : '') +
+      '<div class="score-row"><span class="bars" data-s="' + s + '" role="img" aria-label="5段階中 ' + sc + '">' + [1, 2, 3, 4, 5].map((k) => '<i class="' + (k <= sc ? 'on' : '') + '"></i>').join('') + '</span>' +
+      '<span class="verdict">' + VERDICT[sc] + '</span>' + (a.contentOk === false ? '<span class="tag warn">内容をもう一度確認</span>' : '') + '</div>' +
+      '<dl class="rows"><div><dt>あなたの答え</dt><dd>' + esc(a.text) + '</dd></div>' +
+      (a.corrected && !sameText(a.corrected, a.text) ? '<div><dt>直すなら</dt><dd class="strong">' + esc(a.corrected) + play(a.corrected) + '</dd></div>' : '') +
+      (a.better ? '<div><dt>よりよい答え</dt><dd class="strong">' + esc(a.better) + play(a.better) + '</dd></div>' : '') + '</dl>' +
+      (a.note ? '<p class="note">' + esc(a.note) + '</p>' : '') +
+      '<div class="actions"><button type="button" class="btn" data-iv="retry">もう一度答える</button>' +
+      '<button type="button" class="btn primary" data-iv="next">' + (last ? '結果を見る' : '次の質問へ') + '</button></div>';
+  }
+  box.querySelectorAll('[data-play]').forEach((b) => b.addEventListener('click', () => TTS.speak(toPlay[Number(b.dataset.play)])));
+}
+
+async function ivGenerate(src) {
+  const L = IV_LEVEL[settings.level], lv = LEVELS[settings.level];
+  const out = await aiJSON({
+    system: [
+      'You are a friendly English teacher interviewing a Japanese high school student (' + lv.desc + ') about a text the student has just read aloud. You receive the text.',
+      'Write ' + IV_N + ' interview questions in a natural order, from easier to harder.',
+      L.ask,
+      'Each question is one clear spoken sentence. Questions about the text must be answerable from the text. Do not ask about tiny details such as exact numbers unless they are central.',
+      'Reply with only this JSON: {"questions": [{"q": "the question in English", "ja": "natural Japanese translation of the question", "points": "the key points a good answer should contain, in short English", "sample": "a sample answer at this level"}]}',
+    ].join('\n'),
+    blocks: ['TEXT:\n' + src.text],
+    own: 'Write the ' + IV_N + ' questions now, as JSON only.',
+  }, { tier: 'quick', use: 'interview' });
+  const qs = (out && Array.isArray(out.questions) ? out.questions : []).filter((x) => x && x.q).slice(0, IV_N).map((x) => ({
+    q: String(x.q).trim(), ja: String(x.ja || '').trim(), points: String(x.points || '').trim(), sample: String(x.sample || '').trim(),
+  }));
+  if (qs.length < 3) throw { code: 'invalid_json' };
+  return qs;
+}
+async function ivBegin(fresh) {
+  const src = ivSource();
+  if (!src || iv.busy) return;
+  const key = ivKey(src);
+  let S = iv.sessions[key];
+  if (fresh || !S || !S.questions || !S.questions.length) {
+    iv.busy = true;
+    $('#ivStatus').textContent = 'AI が「' + src.title + '」の質問を作っています…';
+    renderInterview();
+    try {
+      const qs = await ivGenerate(src);
+      S = iv.sessions[key] = { title: src.title, level: settings.level, questions: qs, answers: [], idx: 0, state: 'asking', at: Date.now() };
+      $('#ivStatus').textContent = '';
+    } catch (e) {
+      handleAIError(e);
+      $('#ivStatus').textContent = '質問を作れませんでした。' + errText(e);
+      iv.busy = false; renderInterview();
+      return;
+    }
+    iv.busy = false;
+  } else {
+    Object.assign(S, { answers: [], idx: 0, state: 'asking', at: Date.now() });
+  }
+  ivSave();
+  renderInterview();
+  ivAsk();
+}
+/** The interviewer reads the question; on browsers that allow it, the mic then opens by itself. */
+async function ivAsk() {
+  const S = ivSession();
+  if (!S || S.state !== 'asking') return;
+  const q = S.questions[S.idx], my = S.idx;
+  ivBar.reset('質問を聞いたら、マイクを押して英語で答えましょう。');
+  const done = await TTS.speakSeq([q.q], settings.rate);
+  // Safari will not open the mic without a tap, so there the learner presses the mic button
+  if (done && !IS_SAFARI && currentTab === 'interview' && ivSession() === S && S.state === 'asking' && S.idx === my && !iv.busy) ivBar.start();
+}
+async function ivAnswer(text, meta) {
+  const src = ivSource(), S = ivSession();
+  if (!src || !S || S.state !== 'asking') return;
+  const q = S.questions[S.idx], L = IV_LEVEL[settings.level], lv = LEVELS[settings.level];
+  iv.busy = true;
+  ivBar.setBusy(true);
+  $('#ivStatus').textContent = '答えを確かめています…';
+  if (iv.ctl) iv.ctl.abort();
+  const ctl = new AbortController(); iv.ctl = ctl;
+  try {
+    const out = await aiJSON({
+      system: [
+        'You are a friendly English teacher interviewing a Japanese high school student (' + lv.desc + ') about a text the student read aloud. You receive the text, then one question with the key points of a good answer, then what the student said.',
+        'The answer comes from speech recognition, so ignore punctuation, capitalization and obvious recognition slips.',
+        'Judge (1) whether it answers the question correctly according to the text (for an opinion question: a clear opinion with a reason), and (2) the English. Expected length at this level: ' + L.expect + '.',
+        'Reply with only this JSON: {"score": 1-5 (5 = correct, clear and natural; 4 = correct with small errors; 3 = partly correct, or understandable with mistakes; 2 = mostly off, or very hard to understand; 1 = no real answer), "content_ok": true or false, "reaction": "one short, natural spoken reaction as the interviewer, in English, not a question", "corrected": "the student\'s answer with the smallest corrections needed (identical if already correct)", "better": "a natural answer at the student\'s level, based on the text, keeping the student\'s ideas when possible", "note_ja": "1-2 sentences of feedback in Japanese"}',
+      ].join('\n'),
+      blocks: ['TEXT:\n' + src.text],
+      own: 'QUESTION: ' + q.q + '\nKEY POINTS: ' + (q.points || '(none)') + '\nSTUDENT SAID: ' + JSON.stringify(text) + '\nReply with only the JSON.',
+    }, { tier: 'quick', signal: ctl.signal, use: 'interview' });
+    if (iv.ctl !== ctl) return;
+    let sc = Math.round(Number(out && out.score));
+    if (!(sc >= 1 && sc <= 5)) sc = 3;
+    const a = { text, score: sc, contentOk: out.content_ok !== false, reaction: String(out.reaction || '').trim(), corrected: String(out.corrected || '').trim(), better: String(out.better || q.sample || '').trim(), note: String(out.note_ja || '').trim() };
+    S.answers[S.idx] = a;
+    S.state = 'feedback'; S.at = Date.now();
+    ivSave();
+    logPractice({ mode: 'interview', item: '[' + src.title + '] ' + q.q, text, score: sc, max: 5, input: meta && meta.typed ? 'keyboard' : 'voice', wpm: meta ? wpmOf(text, meta.speechMs) : null, feedback: a.better });
+    $('#ivStatus').textContent = '';
+    iv.busy = false;
+    ivBar.setBusy(false);
+    renderInterview();
+    if (a.reaction) TTS.speak(a.reaction);
+  } catch (e) {
+    if (iv.ctl !== ctl || (e && e.code === 'cancelled')) return;
+    handleAIError(e);
+    iv.busy = false;
+    ivBar.setBusy(false);
+    $('#ivStatus').textContent = '採点できませんでした。' + errText(e) + 'もう一度答えてください。';
+    renderInterview();
+  } finally {
+    if (iv.ctl === ctl) iv.ctl = null;
+  }
+}
+$('#ivResult').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-iv]');
+  const S = ivSession();
+  if (!b || !S) return;
+  TTS.stop();
+  if (b.dataset.iv === 'retry') { S.state = 'asking'; }
+  else if (S.idx >= S.questions.length - 1) { S.state = 'done'; }
+  else { S.idx++; S.state = 'asking'; }
+  S.at = Date.now(); ivSave(); renderInterview();
+  if (S.state === 'asking') ivAsk();
+  else window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+$('#ivDots').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-i]'), S = ivSession();
+  if (!b || !S || iv.busy) return;
+  ivBar.abort(); TTS.stop();
+  S.idx = Number(b.dataset.i); S.state = 'asking'; ivSave(); renderInterview(); ivAsk();
+});
+$('#ivStart').addEventListener('click', () => ivBegin(false));
+$('#ivRenew').addEventListener('click', () => ivBegin(true));
+$('#ivPlay').addEventListener('click', () => { const S = ivSession(); if (S && S.questions[S.idx]) TTS.speak(S.questions[S.idx].q); });
+$('#ivSel').addEventListener('change', (e) => { iv.src = e.target.value; store.set(ukey('ivSrc'), iv.src); ivBar.abort(); TTS.stop(); iv.showText = false; $('#ivStatus').textContent = ''; renderInterview(); });
+$('#ivReload').addEventListener('click', () => loadMySets(true));
+$('#ivJaBtn').addEventListener('click', () => { iv.showJa = !iv.showJa; renderInterview(); });
+$('#ivHideBtn').addEventListener('click', () => { iv.hideQ = !iv.hideQ; renderInterview(); });
+$('#ivTextBtn').addEventListener('click', () => { iv.showText = !iv.showText; renderInterview(); });
+$('#ivAiOffOpen').addEventListener('click', () => { toggleSettings(true); $('#settings').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+$('#pasInterview').addEventListener('click', () => {
+  const P = currentPassage();
+  if (!P) return;
+  iv.src = 'p:' + P.id; store.set(ukey('ivSrc'), iv.src);
+  iv.showText = false;
+  showTab('interview');
+  renderInterview();
+  window.scrollTo({ top: 0 });
+});
+
+ivReady = true;
+
 /* ================= records tab ================= */
-const MODE_SHORT = { 'AI会話': 'AI会話', '音読': '音読', '瞬間英作文(和→英)': '和→英', '瞬間英作文(質問)': '質問に即答', '長文音読(1文)': '長文・1文', '長文音読(段落)': '長文・段落' };
+const MODE_SHORT = { 'AI会話': 'AI会話', '音読': '音読', '瞬間英作文(和→英)': '和→英', '瞬間英作文(質問)': '質問に即答', '長文音読(1文)': '長文・1文', '長文音読(段落)': '長文・段落', 'インタビュー': 'インタビュー' };
 const WEEKDAY = ['日', '月', '火', '水', '木', '金', '土'];
 function dayLabel(key) {
   const [y, m, d] = key.split('-').map(Number);
@@ -3576,6 +3935,7 @@ async function loadAssignments(quiet) {
   const before = pas.id;
   rebuildPassages();
   if (pas.id === before) { renderPasSelect(); renderPasAssign(); refreshPasMarks(); } else renderPasAll();
+  if (ivReady) renderInterview();
 }
 function renderAssignments() {
   const box = $('#asgList');
