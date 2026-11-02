@@ -1595,9 +1595,13 @@ async function gasCall(action, payload, signal) {
   return data;
 }
 
-async function aiJSON(prompt, { tier = 'quick', signal } = {}) {
+/**
+ * prompt is either one string, or { system, blocks, own } for prompt caching: GAS caches the system text and the blocks
+ * (the parts that repeat — the rules, the task, earlier lines of a conversation) and sends own (what is new) after them.
+ */
+async function aiJSON(prompt, { tier = 'quick', signal, use } = {}) {
   if (!aiUsable()) throw { code: 'no_ai' };
-  const data = await gasCall('ai', { prompt, tier }, signal);
+  const data = await gasCall('ai', Object.assign(typeof prompt === 'string' ? { prompt } : { parts: prompt }, { tier, use }), signal);
   const v = parseLooseJSON(data.text);
   if (v === undefined) throw { code: 'invalid_json' };
   return v;
@@ -1956,27 +1960,31 @@ function updateTalkAvailability() {
   $('#reviewBtn').disabled = off;
 }
 
+/**
+ * Prompt caching: the rules come first, then the conversation one line per block. A turn only adds lines at the end,
+ * so the next turn reads everything up to the previous line from the cache. Earlier lines must never change.
+ */
 function talkPrompt() {
   const lv = LEVELS[settings.level];
-  const recent = talk.turns.slice(-14).map((t) => (t.role === 'ai' ? 'Partner: ' : 'Learner: ') + t.text).join('\n');
   const lastMe = [...talk.turns].reverse().find((t) => t.role === 'me');
-  return [
-    'You are an English conversation partner helping a Japanese learner practice speaking.',
-    'Your role: ' + talk.scenario.role,
-    'Learner level: ' + lv.desc + '.',
-    'Rules:',
-    '- Stay in your role and keep the conversation going naturally. Reply in 1-3 short spoken sentences, and usually end with a question.',
-    '- ' + lv.style,
-    "- The learner's lines come from speech recognition, so ignore punctuation, capitalization and obvious recognition slips.",
-    '- If the learner writes Japanese or seems stuck, help them gently in simple English.',
-    '',
-    'Conversation so far:',
-    recent,
-    '',
-    "Now (1) write your next line, and (2) check only the learner's last line for grammar mistakes or unnatural wording: " + JSON.stringify(lastMe ? lastMe.text : ''),
-    'Reply with only this JSON:',
-    '{"reply": "your next line in English", "reply_ja": "natural Japanese translation of your line", "feedback": {"ok": true or false, "better": "a corrected, more natural version of the learner\'s last line that keeps their meaning (empty string if ok is true)", "note_ja": "one short sentence in Japanese explaining the fix, or a short compliment if ok"}, "hints": ["a natural reply the learner could say next", "a different reply the learner could say next"]}',
-  ].join('\n');
+  return {
+    system: [
+      'You are an English conversation partner helping a Japanese learner practice speaking.',
+      'Your role: ' + talk.scenario.role,
+      'Learner level: ' + lv.desc + '.',
+      'Rules:',
+      '- Stay in your role and keep the conversation going naturally. Reply in 1-3 short spoken sentences, and usually end with a question.',
+      '- ' + lv.style,
+      "- The learner's lines come from speech recognition, so ignore punctuation, capitalization and obvious recognition slips.",
+      '- If the learner writes Japanese or seems stuck, help them gently in simple English.',
+      '',
+      'Conversation so far: it follows one line per block ("Partner" is you, "Learner" is the learner). Then you are asked for your next line.',
+      'Reply with only this JSON:',
+      '{"reply": "your next line in English", "reply_ja": "natural Japanese translation of your line", "feedback": {"ok": true or false, "better": "a corrected, more natural version of the learner\'s last line that keeps their meaning (empty string if ok is true)", "note_ja": "one short sentence in Japanese explaining the fix, or a short compliment if ok"}, "hints": ["a natural reply the learner could say next", "a different reply the learner could say next"]}',
+    ].join('\n'),
+    blocks: talk.turns.slice(-40).map((t) => (t.role === 'ai' ? 'Partner: ' : 'Learner: ') + t.text),
+    own: "Now (1) write your next line, and (2) check only the learner's last line for grammar mistakes or unnatural wording: " + JSON.stringify(lastMe ? lastMe.text : '') + '\nReply with only the JSON.',
+  };
 }
 
 function onTalkSubmit(text, meta) {
@@ -1995,7 +2003,7 @@ async function requestReply(meEl) {
   const ctl = new AbortController();
   talk.ctl = ctl;
   try {
-    const out = await aiJSON(talkPrompt(), { tier: 'quick', signal: ctl.signal });
+    const out = await aiJSON(talkPrompt(), { tier: 'quick', signal: ctl.signal, use: 'talk' });
     if (talk.ctl !== ctl) return;
     typing.remove();
     const reply = String((out && out.reply) || '').trim();
@@ -2039,19 +2047,19 @@ async function reviewTalk() {
   $('#reviewBtn').disabled = true;
   const lv = LEVELS[settings.level];
   const transcript = talk.turns.slice(-30).map((t) => (t.role === 'ai' ? 'Partner: ' : 'Learner: ') + t.text).join('\n');
-  const prompt = [
-    'You are an encouraging English speaking coach. Review this speaking practice by a Japanese learner (' + lv.desc + ').',
-    "The learner's lines come from speech recognition, so ignore punctuation, capitalization and obvious recognition slips.",
-    'Scenario: ' + talk.scenario.role,
-    '',
-    transcript,
-    '',
-    'Reply with only this JSON (write every explanation in Japanese):',
-    '{"summary_ja": "2-3 sentences of overall feedback", "good_ja": ["something the learner did well"], "fixes": [{"said": "the learner\'s original line", "better": "a natural version", "why_ja": "short reason"}], "phrases": [{"en": "a useful phrase for this scenario", "ja": "meaning"}]}',
-    'Give at most 2 items in good_ja, at most 4 fixes (only real problems, none if there are none), and exactly 3 phrases.',
-  ].join('\n');
+  const prompt = {
+    system: [
+      'You are an encouraging English speaking coach. Review a speaking practice by a Japanese learner (' + lv.desc + '). You receive the scenario, then the transcript.',
+      "The learner's lines come from speech recognition, so ignore punctuation, capitalization and obvious recognition slips.",
+      'Reply with only this JSON (write every explanation in Japanese):',
+      '{"summary_ja": "2-3 sentences of overall feedback", "good_ja": ["something the learner did well"], "fixes": [{"said": "the learner\'s original line", "better": "a natural version", "why_ja": "short reason"}], "phrases": [{"en": "a useful phrase for this scenario", "ja": "meaning"}]}',
+      'Give at most 2 items in good_ja, at most 4 fixes (only real problems, none if there are none), and exactly 3 phrases.',
+    ].join('\n'),
+    blocks: ['Scenario: ' + talk.scenario.role],
+    own: 'Transcript:\n' + transcript,
+  };
   try {
-    const out = await aiJSON(prompt, { tier: 'default', signal: ctl.signal });
+    const out = await aiJSON(prompt, { tier: 'default', signal: ctl.signal, use: 'review' });
     if (reviewCtl !== ctl) return;
     renderReview(out || {});
   } catch (e) {
@@ -2321,11 +2329,13 @@ $('#shadowGen').addEventListener('submit', async (e) => {
   st.hidden = false; st.textContent = '練習文を作っています…';
   $('#shadowGenBtn').disabled = true;
   try {
-    const out = await aiJSON(
-      'Create 5 sentences for English shadowing practice for a Japanese learner (' + lv.desc + '). Topic: ' + (topic || 'everyday conversation') +
-      '. Each sentence must be natural spoken English, ' + lv.len + ', and useful in real life. Vary the sentence patterns.\n' +
-      'Reply with only a JSON array like [{"en": "English sentence", "ja": "natural Japanese translation"}].',
-      { tier: 'quick', signal: ctl.signal });
+    const out = await aiJSON({
+      system: 'Create 5 sentences for English shadowing practice for a Japanese learner (' + lv.desc + ') on the topic you are given. ' +
+        'Each sentence must be natural spoken English, ' + lv.len + ', and useful in real life. Vary the sentence patterns.\n' +
+        'Reply with only a JSON array like [{"en": "English sentence", "ja": "natural Japanese translation"}].',
+      blocks: [],
+      own: 'Topic: ' + (topic || 'everyday conversation'),
+    }, { tier: 'quick', signal: ctl.signal, use: 'gen' });
     if (shadow.ctl !== ctl) return;
     const items = (Array.isArray(out) ? out : []).filter((x) => x && x.en).slice(0, 8).map((x) => ({ en: String(x.en).trim(), ja: String(x.ja || '').trim() }));
     if (!items.length) throw { code: 'invalid_json' };
@@ -2707,19 +2717,23 @@ async function pasReview(btn, out, target, heard, missed, wpm) {
   out.hidden = false;
   out.innerHTML = '<p class="fine">講評を書いています…</p>';
   const lv = LEVELS[settings.level];
-  const prompt = [
-    'You are an English pronunciation and reading-aloud coach for a Japanese learner (' + lv.desc + ').',
-    'The learner read the text below aloud, and a speech recognizer transcribed it.',
-    'Words the recognizer missed or heard as different words often point to pronunciation problems typical for Japanese speakers (L/R, TH, V/B, F/H, final consonants, extra vowels after consonants, word stress), but recognizers also make mistakes, so do not over-interpret, and stay kind and encouraging.',
-    'Text: ' + JSON.stringify(target),
-    'Recognized: ' + JSON.stringify(heard),
-    'Words not recognized: ' + (missed.length ? missed.slice(0, 25).join(', ') : 'none'),
-    wpm ? 'Reading speed: about ' + wpm + ' words per minute.' : '',
-    'Reply with only this JSON: {"summary_ja": "2 sentences of overall feedback in Japanese", "points": [{"word": "a word or short phrase from the text", "heard": "what the recognizer heard instead, or empty", "tip_ja": "a short, concrete pronunciation tip in Japanese"}], "next_ja": "one concrete thing to practice next, in Japanese"}',
-    'Give at most 4 points, choosing the most useful ones. If almost everything was recognized, give tips on rhythm, linking and intonation instead.',
-  ].filter(Boolean).join('\n');
+  const prompt = {
+    system: [
+      'You are an English pronunciation and reading-aloud coach for a Japanese learner (' + lv.desc + ').',
+      'The learner read a text aloud, and a speech recognizer transcribed it. You receive the text, then what was recognized.',
+      'Words the recognizer missed or heard as different words often point to pronunciation problems typical for Japanese speakers (L/R, TH, V/B, F/H, final consonants, extra vowels after consonants, word stress), but recognizers also make mistakes, so do not over-interpret, and stay kind and encouraging.',
+      'Reply with only this JSON: {"summary_ja": "2 sentences of overall feedback in Japanese", "points": [{"word": "a word or short phrase from the text", "heard": "what the recognizer heard instead, or empty", "tip_ja": "a short, concrete pronunciation tip in Japanese"}], "next_ja": "one concrete thing to practice next, in Japanese"}',
+      'Give at most 4 points, choosing the most useful ones. If almost everything was recognized, give tips on rhythm, linking and intonation instead.',
+    ].join('\n'),
+    blocks: ['Text: ' + JSON.stringify(target)],
+    own: [
+      'Recognized: ' + JSON.stringify(heard),
+      'Words not recognized: ' + (missed.length ? missed.slice(0, 25).join(', ') : 'none'),
+      wpm ? 'Reading speed: about ' + wpm + ' words per minute.' : '',
+    ].filter(Boolean).join('\n'),
+  };
   try {
-    const res = await aiJSON(prompt, { tier: 'quick', signal: ctl.signal });
+    const res = await aiJSON(prompt, { tier: 'quick', signal: ctl.signal, use: 'reading' });
     if (pas.aiCtl !== ctl) return;
     const pts = Array.isArray(res && res.points) ? res.points.filter((x) => x && x.word).slice(0, 4) : [];
     out.innerHTML = '<span class="eyebrow">AIの講評</span>' +
@@ -2995,25 +3009,30 @@ async function evaluateQuick(info) {
   box.hidden = false;
   box.innerHTML = '<p class="fine">採点しています…</p>';
   const lv = LEVELS[settings.level];
-  const prompt = type === 'ja2en' ? [
-    'You are an English speaking coach for a Japanese learner (' + lv.desc + '). The learner was asked to say this Japanese sentence in English, quickly and from memory:',
-    'Japanese: ' + it.ja,
-    'Reference answer: ' + it.en,
-    'Learner said (from speech recognition; ignore punctuation and capitalization): ' + JSON.stringify(info.text),
-    'Judge whether the meaning comes across and the English is correct. Accept any natural answer, not only the reference.',
-    'Reply with only this JSON:',
-    '{"score": 1-5 (5 = correct and natural, 4 = correct but slightly unnatural, 3 = understandable with mistakes, 2 = partly conveyed, 1 = meaning not conveyed), "corrected": "the learner\'s answer with the smallest corrections needed (identical if already correct)", "natural": "how a native speaker would naturally say it", "note_ja": "1-2 sentences of feedback in Japanese"}',
-  ].join('\n') : [
-    'You are an English speaking coach for a Japanese learner (' + lv.desc + '). The learner was asked this question and answered aloud within ' + QUICK_SEC.qa + ' seconds:',
-    'Question: ' + it.q,
-    'Learner said (from speech recognition; ignore punctuation and capitalization): ' + JSON.stringify(info.text),
-    'Evaluate grammar, naturalness, and whether it actually answers the question. Be encouraging.',
-    'Reply with only this JSON:',
-    '{"score": 1-5 (5 = natural, clear and developed, 3 = understandable with mistakes or very short, 1 = does not answer), "corrected": "the learner\'s answer with the smallest corrections needed", "natural": "a better answer one step above the learner\'s level, 2-3 sentences, keeping the learner\'s own ideas", "note_ja": "1-2 sentences of feedback in Japanese"}',
-  ].join('\n');
+  // The coach's rules and the item are the same for every student answering it, so they go first (cached); the answer goes last.
+  const said = 'Learner said (from speech recognition; ignore punctuation and capitalization): ' + JSON.stringify(info.text);
+  const prompt = type === 'ja2en' ? {
+    system: [
+      'You are an English speaking coach for a Japanese learner (' + lv.desc + '). The learner was asked to say a Japanese sentence in English, quickly and from memory. You receive the Japanese and a reference answer, then what the learner said.',
+      'Judge whether the meaning comes across and the English is correct. Accept any natural answer, not only the reference.',
+      'Reply with only this JSON:',
+      '{"score": 1-5 (5 = correct and natural, 4 = correct but slightly unnatural, 3 = understandable with mistakes, 2 = partly conveyed, 1 = meaning not conveyed), "corrected": "the learner\'s answer with the smallest corrections needed (identical if already correct)", "natural": "how a native speaker would naturally say it", "note_ja": "1-2 sentences of feedback in Japanese"}',
+    ].join('\n'),
+    blocks: ['Japanese: ' + it.ja + '\nReference answer: ' + it.en],
+    own: said,
+  } : {
+    system: [
+      'You are an English speaking coach for a Japanese learner (' + lv.desc + '). The learner was asked a question and answered aloud within ' + QUICK_SEC.qa + ' seconds. You receive the question, then what the learner said.',
+      'Evaluate grammar, naturalness, and whether it actually answers the question. Be encouraging.',
+      'Reply with only this JSON:',
+      '{"score": 1-5 (5 = natural, clear and developed, 3 = understandable with mistakes or very short, 1 = does not answer), "corrected": "the learner\'s answer with the smallest corrections needed", "natural": "a better answer one step above the learner\'s level, 2-3 sentences, keeping the learner\'s own ideas", "note_ja": "1-2 sentences of feedback in Japanese"}',
+    ].join('\n'),
+    blocks: ['Question: ' + it.q],
+    own: said,
+  };
   const ctl = new AbortController(); quick.ctl = ctl;
   try {
-    const out = await aiJSON(prompt, { tier: 'quick', signal: ctl.signal });
+    const out = await aiJSON(prompt, { tier: 'quick', signal: ctl.signal, use: 'quick' });
     if (quick.ctl !== ctl || quick.idx !== idx || quick.type !== type) return;
     quick.state = 'done';
     renderQuickResult({ info, ai: out || {} });
