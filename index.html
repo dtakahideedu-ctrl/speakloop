@@ -154,6 +154,7 @@ a.mini { text-decoration: none; }
 .ai-setup { grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 16px; display: grid; gap: 10px; }
 .status-line { margin: 0; font-size: var(--fs-sm); }
 .status-line.ok { color: var(--good); } .status-line.bad { color: var(--miss); }
+.mic-log { margin: 0; max-height: 260px; overflow: auto; padding: 10px 12px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); font: 400 12px/1.5 ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* ---------- notices ---------- */
 .notice {
@@ -579,6 +580,16 @@ body.gated .toolbar, body.gated .panel, body.gated .foot { display: none !import
       <div class="field-row">
         <button type="button" class="mini" id="voiceTest">試しに聞く</button>
         <span class="fine" id="voiceNote"></span>
+      </div>
+    </div>
+    <div class="ai-setup">
+      <h3>音声認識の記録(うまく動かないときの調査用)</h3>
+      <label class="check"><input type="checkbox" id="micDebug"> マイクの動きを記録する</label>
+      <p class="fine">オンにして音読し、うまくいかなかったら、ここに戻って記録を見てください。そのまま画面を撮影して先生や管理者に送れます。記録はこの端末の中だけにあり、どこにも送られません。</p>
+      <pre class="mic-log" id="micLog" hidden></pre>
+      <div class="field-row" id="micLogTools" hidden>
+        <button type="button" class="mini" id="micLogCopy">記録をコピー</button>
+        <button type="button" class="mini" id="micLogClear">記録を消す</button>
       </div>
     </div>
     <div class="ai-setup" id="whoSetup" hidden>
@@ -1229,6 +1240,7 @@ const TTS = {
     });
   },
   stop() { this.seq++; if (this.ok) { try { speechSynthesis.cancel(); } catch (e) { /* ignore */ } } },
+  busy() { try { return this.ok && (speechSynthesis.speaking || speechSynthesis.pending); } catch (e) { return false; } },
 };
 
 /* ================= speech recognition ================= */
@@ -1261,6 +1273,16 @@ function micHelpText() {
   }
   if (lastMicError === 'network') {
     return '音声認識サービスに接続できませんでした。Chrome の音声認識はインターネット経由で動きます。接続を確認して、もう一度押してください。';
+  }
+  if (IS_SAFARI && lastMicError === 'service-not-allowed') {
+    return IS_IOS
+      ? '音声認識が使えない設定になっています。iPhone・iPad の「設定」→「一般」→「キーボード」で「音声入力」をオンにしてください。スクリーンタイムで Siri や音声入力を制限している場合も使えません。'
+      : '音声認識が使えない設定になっています。Mac の「システム設定」→「キーボード」で「音声入力」をオンにしてください。';
+  }
+  if (IS_SAFARI && (lastMicError === 'not-allowed' || micState === 'blocked')) {
+    return IS_IOS
+      ? 'マイクが許可されていません。アドレスバーの「ぁあ」(または「AA」)→「Webサイトの設定」→「マイク」を「許可」にして、ページを再読み込みしてください。「設定」→「アプリ」→「Safari」→「マイク」が「拒否」になっていないかも確認してください。'
+      : 'マイクが許可されていません。Safari のメニュー「Safari」→「設定」→「Webサイト」→「マイク」で、このページを「許可」にして再読み込みしてください。Mac の「システム設定」→「プライバシーとセキュリティ」→「マイク」で Safari がオンになっているかも確認してください。';
   }
   if (location.protocol === 'file:') {
     return 'ファイルをダブルクリックで直接開くと、ブラウザがマイクを許可しないことがあります。GitHub Pages に公開した URL(https://…github.io/…)から開いてください。';
@@ -1295,46 +1317,94 @@ function joinPieces(pieces) {
   });
   return out.join(' ');
 }
-const FATAL_MIC = ['not-allowed', 'service-not-allowed', 'audio-capture', 'network', 'language-not-supported'];
+const FATAL_MIC = ['not-allowed', 'service-not-allowed', 'audio-capture', 'network', 'language-not-supported', 'restart-refused'];
+/* Safari (and every browser on iPhone/iPad, which all use Safari's engine) needs a few extra precautions below. */
+const UA = navigator.userAgent || '';
+const IS_IOS = /iP(hone|ad|od)/.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const IS_SAFARI = IS_IOS || (/Safari\//.test(UA) && !/Chrome|Chromium|CriOS|Edg|OPR|Firefox|FxiOS/.test(UA));
+/* Recognizers whose "end" has not arrived yet. Safari refuses to start a new one while an old one is still alive. */
+const liveRecs = new Set();
+
+/* ---- 音声認識の記録: Settings can show what the recognizer did, so a problem on one device can be reported ---- */
+const micLog = { on: !!store.get('micDebug', false), lines: store.get('micLogLines', []), saveT: 0 };
+if (!Array.isArray(micLog.lines)) micLog.lines = [];
+function mlog(msg) {
+  if (!micLog.on) return;
+  const d = new Date();
+  micLog.lines.push(String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0') + '.' + String(d.getMilliseconds()).padStart(3, '0').slice(0, 1) + '  ' + msg);
+  if (micLog.lines.length > 120) micLog.lines.shift();
+  // kept on this device, so the record survives the reload that usually follows a stuck mic
+  clearTimeout(micLog.saveT);
+  micLog.saveT = setTimeout(() => store.set('micLogLines', micLog.lines), 400);
+  const box = document.getElementById('micLog');
+  if (box) box.textContent = micLog.lines.join('\n');
+}
+
 /*
- * silenceMs: stop once the words have not changed for this long after the learner started speaking.
- * noSpeechMs: stop if nothing at all is heard for this long.
- * Chrome ends a non-continuous recognition by itself after a pause, but Safari on iPhone keeps listening,
- * and sometimes never reports the end even after stop(), so the page keeps its own clock for both.
+ * silenceMs: stop once no new words have been heard for this long after the learner started speaking.
+ * noSpeechMs: stop if nothing at all is heard for this long (counted from when the mic actually opens).
+ * maxMs: stop after this long whatever happens (a safety net).
+ * Chrome ends a non-continuous recognition by itself after a pause, but Safari keeps listening, keeps re-sending
+ * the same words in a slightly different form ("bananas" / "Bananas."), and sometimes never reports the end even
+ * after stop(), so the page keeps its own clock and only counts real growth of the words as speech.
  */
-function listen({ continuous, persist, silenceMs, noSpeechMs, onInterim, onDone }) {
+function listen({ continuous, persist, silenceMs, noSpeechMs, maxMs, onInterim, onDone }) {
   if (activeRec) activeRec.abort();
+  const ttsBusy = TTS.busy();
   TTS.stop();
   const t0 = performance.now();
+  const cap = maxMs || (persist ? 5 * 60 * 1000 : 45000);
   const segs = []; // text from earlier recognition sessions (persist mode)
-  let finals = [], interim = '', first = null, last = null, error = null, ended = false, stopped = false, current = null;
-  let lastText = '', lastChange = null, forceT = 0, quickEmpty = 0, sessionStart = 0, sessionHeard = false;
+  let finals = [], interim = '', first = null, last = null, error = null, ended = false, stopped = false, started = false, current = null;
+  let audioAt = null, maxWords = 0, lastChange = null, forceT = 0, startT = 0, quickEmpty = 0, sessionStart = 0, sessionHeard = false, sessions = 0;
+  let reason = ''; // why the page itself ended the recording ('hidden'); the browser's own error codes must not replace it
   const text = () => joinPieces(segs.concat(finals.filter(Boolean), [interim]));
   const forceFinish = () => {
     // If the browser never reports the end (seen on iPhone), finish with what was heard so far.
     clearTimeout(forceT);
-    forceT = setTimeout(() => { if (!ended) { try { current && current.abort(); } catch (e) { /* ignore */ } finish(); } }, 1500);
+    forceT = setTimeout(() => {
+      if (ended) return;
+      mlog('end did not arrive; finishing');
+      const r = current;
+      try { r && r.abort(); } catch (e) { /* ignore */ }
+      finish();
+      setTimeout(() => liveRecs.delete(r), 500); // do not make the next tap wait for a recognizer that never reports back
+    }, 1500);
   };
   const handle = {
-    stop() { stopped = true; try { current && current.stop(); } catch (e) { /* ignore */ } forceFinish(); },
-    abort() { stopped = true; try { current && current.abort(); } catch (e) { /* ignore */ } forceFinish(); },
+    stop() { mlog('stop'); stopped = true; if (!started) { clearTimeout(startT); finish(); return; } try { current && current.stop(); } catch (e) { /* ignore */ } forceFinish(); },
+    abort(why) {
+      mlog('abort' + (why ? ' (' + why + ')' : ''));
+      stopped = true;
+      if (why) reason = why;
+      if (!started) { clearTimeout(startT); finish(); return; }
+      try { current && current.abort(); } catch (e) { /* ignore */ }
+      forceFinish();
+    },
   };
   const watch = setInterval(() => {
-    if (ended || stopped) return;
+    if (ended || stopped || !started) return;
     const now = performance.now();
-    if (lastChange != null ? (silenceMs && now - lastChange > silenceMs) : (noSpeechMs && now - t0 > noSpeechMs)) handle.stop();
+    if (now - t0 > cap) { mlog('time limit'); handle.stop(); return; }
+    // before any speech, count from when the mic opened: a permission prompt can take a while on Safari
+    const base = audioAt != null ? audioAt : t0;
+    if (lastChange != null ? (silenceMs && now - lastChange > silenceMs) : (noSpeechMs && now - base > noSpeechMs)) { mlog(lastChange != null ? 'silence' : 'nothing heard'); handle.stop(); }
   }, 200);
   function finish() {
     if (ended) return;
     ended = true;
     clearInterval(watch);
     clearTimeout(forceT);
+    clearTimeout(startT);
     if (activeRec === handle) activeRec = null;
-    if (!error || error === 'no-speech') {
+    if (!error || error === 'no-speech' || error === 'restart-refused') {
       // the mic worked; clear a warning left over from an earlier refusal
       if (micState !== 'ok') { micState = 'ok'; lastMicError = ''; document.body.classList.remove('no-mic'); $('#micNotice').hidden = true; }
     }
-    onDone({ text: text(), error, speechMs: first != null && last != null ? last - first : null, reactionMs: first != null ? first - t0 : null });
+    if (reason) error = reason;
+    const said = reason === 'hidden' ? '' : text(); // half a reading, cut off by leaving the page, is not graded
+    mlog('done: ' + (said ? JSON.stringify(said.slice(0, 80)) : '(nothing)') + (error ? ' [' + error + ']' : ''));
+    onDone({ text: said, error, speechMs: first != null && last != null ? last - first : null, reactionMs: first != null ? first - t0 : null });
   }
   function startOne() {
     const rec = new SR();
@@ -1344,21 +1414,32 @@ function listen({ continuous, persist, silenceMs, noSpeechMs, onInterim, onDone 
     rec.maxAlternatives = 1;
     finals = []; interim = '';
     sessionStart = performance.now(); sessionHeard = false;
+    sessions++;
+    rec.onaudiostart = () => { if (audioAt == null) audioAt = performance.now(); mlog('mic open'); };
+    rec.onspeechstart = () => mlog('speech start');
+    rec.onspeechend = () => mlog('speech end');
     rec.onresult = (e) => {
       interim = '';
+      let fin = false;
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const r = e.results[i];
-        if (r.isFinal) finals[i] = r[0].transcript; else interim += r[0].transcript + ' ';
+        if (r.isFinal) { finals[i] = r[0].transcript; fin = true; } else interim += r[0].transcript + ' ';
       }
       const now = performance.now();
       if (first == null) first = now;
       last = now;
       sessionHeard = true;
       const t = text();
-      if (t !== lastText) { lastText = t; lastChange = now; }
+      // Only more words count as speech; Safari keeps rewriting the same words, which must not keep the mic open.
+      const n = normPiece(t) ? normPiece(t).split(' ').length : 0;
+      if (n > maxWords) { maxWords = n; lastChange = now; }
+      mlog((fin ? 'result (final) ' : 'result ') + JSON.stringify(t.slice(-70)));
       if (onInterim) onInterim(t);
     };
     rec.onerror = (e) => {
+      mlog('error: ' + e.error);
+      // Safari may refuse an automatic restart (there was no tap). That ends this reading; the mic itself is fine.
+      if (sessions > 1 && (e.error === 'not-allowed' || e.error === 'service-not-allowed')) { error = 'restart-refused'; return; }
       error = e.error;
       if (e.error === 'no-speech' || e.error === 'aborted') return;
       lastMicError = e.error;
@@ -1366,30 +1447,70 @@ function listen({ continuous, persist, silenceMs, noSpeechMs, onInterim, onDone 
       showMicNotice(true);
     };
     rec.onend = () => {
-      if (current !== rec) return;
+      liveRecs.delete(rec);
+      mlog('end');
+      if (current !== rec || ended) return;
       const said = joinPieces(finals.filter(Boolean).concat([interim]));
       if (said) segs.push(said);
       finals = []; interim = '';
       // A browser that ends every session at once, hearing nothing, would otherwise restart forever.
       quickEmpty = !sessionHeard && performance.now() - sessionStart < 1500 ? quickEmpty + 1 : 0;
       // Browsers end recognition after a pause; in persist mode keep going until the learner presses stop.
-      if (persist && !stopped && quickEmpty < 3 && !FATAL_MIC.includes(error) && performance.now() - t0 < 5 * 60 * 1000) {
+      if (persist && !stopped && quickEmpty < 3 && !FATAL_MIC.includes(error) && performance.now() - t0 < cap) {
         error = null;
-        try { startOne(); return; } catch (err) { /* fall through */ }
+        // Safari needs a moment to let go of the mic before the next session
+        startT = setTimeout(() => {
+          if (ended || stopped) { finish(); return; }
+          try { startOne(); } catch (err) { mlog('restart failed: ' + (err && err.name)); finish(); }
+        }, IS_SAFARI ? 250 : 0);
+        return;
       }
       finish();
     };
     current = rec;
+    liveRecs.add(rec);
     rec.start();
+    mlog('start' + (sessions > 1 ? ' (again, ' + sessions + ')' : '') + (continuous ? ' continuous' : ''));
   }
+  let retried = false;
+  const go = () => {
+    if (ended || stopped) return;
+    started = true;
+    try { startOne(); } catch (err) {
+      mlog('start failed: ' + (err && (err.name || err.message)));
+      if (current) liveRecs.delete(current);
+      current = null;
+      // "already started": an old recognizer is still holding the mic. Let it go and try once more, still close to the tap.
+      if (!retried && err && err.name === 'InvalidStateError') {
+        retried = true;
+        liveRecs.forEach((r) => { try { r.abort(); } catch (e) { /* ignore */ } });
+        liveRecs.clear();
+        startT = setTimeout(go, 300);
+        return;
+      }
+      error = 'start-failed';
+      setTimeout(finish, 0); // never call onDone before listen() has returned
+    }
+  };
   activeRec = handle;
-  try { startOne(); } catch (err) {
-    ended = true; activeRec = null;
-    clearInterval(watch);
-    setTimeout(() => onDone({ text: '', error: 'start-failed' }), 0);
-  }
+  // Safari may refuse to open the mic long after the tap, so wait only when there is a reason to, and only briefly.
+  if (liveRecs.size) {
+    // An earlier recognizer is still shutting down: stop it and start as soon as it lets go (at most 0.6 s).
+    mlog('waiting for the previous recognition to end');
+    liveRecs.forEach((r) => { try { r.abort(); } catch (e) { /* ignore */ } });
+    const until = performance.now() + 600;
+    const poll = () => {
+      if (ended || stopped) return;
+      if (!liveRecs.size || performance.now() > until) { liveRecs.clear(); go(); } else startT = setTimeout(poll, 50);
+    };
+    startT = setTimeout(poll, 30);
+  } else if (IS_SAFARI && ttsBusy) {
+    startT = setTimeout(go, 300); // the model voice was just cut off; Safari needs a moment to switch from playing to recording
+  } else go(); // the usual case: start right away, inside the tap
   return handle;
 }
+// Switching to another app or tab ends the recording, so it can never be left running in the background.
+document.addEventListener('visibilitychange', () => { if (document.hidden && activeRec) activeRec.abort('hidden'); });
 
 function wordCount(t) { return (String(t).match(/[A-Za-z0-9']+/g) || []).length; }
 function wpmOf(text, ms) {
@@ -1464,7 +1585,9 @@ function AnswerBar(mount, opts) {
         rec = null;
         setRecording(false);
         if (!r.text) {
-          if (r.error && r.error !== 'no-speech' && r.error !== 'aborted') setLive('マイクが使えませんでした。上に表示した方法を試してください。下の入力欄に英語を打っても練習できます。', 'error');
+          if (r.error === 'hidden') setLive('ほかの画面に切り替わったので、録音を止めました。もう一度マイクを押してください。', 'idle');
+          else if (r.error === 'start-failed') setLive('マイクを開けませんでした。少し待ってから、もう一度マイクを押してください。', 'error');
+          else if (r.error && r.error !== 'no-speech' && r.error !== 'aborted' && r.error !== 'restart-refused') setLive('マイクが使えませんでした。上に表示した方法を試してください。下の入力欄に英語を打っても練習できます。', 'error');
           else setLive('聞き取れませんでした。もう少し大きな声で、もう一度話してください。', 'error');
           if (opts.onCancel) opts.onCancel();
           return;
@@ -1734,6 +1857,26 @@ $$('.rate-chips button').forEach((b) => b.addEventListener('click', () => { sett
 renderRate();
 $('#voiceSelect').addEventListener('change', (e) => { settings.voice = e.target.value; saveSettings(); });
 $('#voiceTest').addEventListener('click', () => TTS.speak("Hi! Let's practice speaking English together."));
+function renderMicLog() {
+  $('#micDebug').checked = micLog.on;
+  $('#micLog').hidden = !micLog.on;
+  $('#micLogTools').hidden = !micLog.on;
+  $('#micLog').textContent = micLog.lines.length ? micLog.lines.join('\n') : '(まだ記録はありません。マイクを押して話すと、ここに記録されます)';
+}
+$('#micDebug').addEventListener('change', (e) => {
+  micLog.on = e.target.checked;
+  store.set('micDebug', micLog.on);
+  if (!micLog.on) { micLog.lines = []; store.del('micLogLines'); }
+  if (micLog.on && !micLog.lines.length) mlog('device: ' + UA + ' | engine: ' + (IS_SAFARI ? (IS_IOS ? 'iPhone/iPad (Safari engine)' : 'Safari') : 'other') + ' | recognition: ' + (SR ? 'yes' : 'no'));
+  renderMicLog();
+});
+$('#micLogClear').addEventListener('click', () => { micLog.lines = []; store.del('micLogLines'); renderMicLog(); });
+$('#micLogCopy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(micLog.lines.join('\n')); $('#micLogCopy').textContent = 'コピーしました'; }
+  catch (e) { $('#micLogCopy').textContent = 'コピーできませんでした。画面を撮影してください'; }
+  setTimeout(() => { $('#micLogCopy').textContent = '記録をコピー'; }, 2500);
+});
+renderMicLog();
 
 const settingsBtn = $('#settingsBtn');
 function toggleSettings(open) {
